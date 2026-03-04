@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BodyPartData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/upgrades/body_part_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+slot = "left_arm"
+display_name = "Rapid-Fire Module"
+mod_fire_rate = 1.0

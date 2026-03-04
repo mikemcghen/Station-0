@@ -1,0 +1,23 @@
+# Godot 4 — standard ignores
+.godot/
+*.uid
+
+# Export / build output
+exports/
+*.exe
+*.x86_64
+*.dmg
+*.app
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor metadata
+.vscode/
+*.suo
+*.user
+
+# Local config (not for version control)
+*.cfg
+!project.godot

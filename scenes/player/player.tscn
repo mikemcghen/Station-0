@@ -1,0 +1,61 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/player/player_stats.gd" id="2"]
+
+[sub_resource type="CircleShape2D" id="1"]
+radius = 10.0
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1")
+
+[node name="Collision" type="CollisionShape2D" parent="."]
+shape = SubResource("1")
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="SlotLegs" type="Node2D" parent="Body"]
+
+[node name="Placeholder" type="Polygon2D" parent="Body/SlotLegs"]
+polygon = PackedVector2Array(-8, 4, 8, 4, 8, 14, -8, 14)
+color = Color(0.3, 0.35, 0.45, 1)
+
+[node name="SlotTorso" type="Node2D" parent="Body"]
+
+[node name="Placeholder" type="Polygon2D" parent="Body/SlotTorso"]
+polygon = PackedVector2Array(-10, -12, 10, -12, 10, 10, -10, 10)
+color = Color(0.4, 0.55, 0.75, 1)
+
+[node name="SlotLeftArm" type="Node2D" parent="Body"]
+
+[node name="Placeholder" type="Polygon2D" parent="Body/SlotLeftArm"]
+polygon = PackedVector2Array(-16, -8, -10, -8, -10, 6, -16, 6)
+color = Color(0.35, 0.5, 0.7, 1)
+
+[node name="SlotRightArm" type="Node2D" parent="Body"]
+
+[node name="Placeholder" type="Polygon2D" parent="Body/SlotRightArm"]
+polygon = PackedVector2Array(10, -8, 16, -8, 16, 6, 10, 6)
+color = Color(0.35, 0.5, 0.7, 1)
+
+[node name="SlotHead" type="Node2D" parent="Body"]
+
+[node name="Placeholder" type="Polygon2D" parent="Body/SlotHead"]
+polygon = PackedVector2Array(-8, -22, 8, -22, 8, -12, -8, -12)
+color = Color(0.5, 0.65, 0.85, 1)
+
+[node name="EyeLeft" type="Polygon2D" parent="Body/SlotHead"]
+polygon = PackedVector2Array(-5, -20, -2, -20, -2, -17, -5, -17)
+color = Color(1, 0.9, 0.3, 1)
+
+[node name="EyeRight" type="Polygon2D" parent="Body/SlotHead"]
+polygon = PackedVector2Array(2, -20, 5, -20, 5, -17, 2, -17)
+color = Color(1, 0.9, 0.3, 1)
+
+[node name="ShootOrigin" type="Marker2D" parent="."]
+position = Vector2(16, 0)
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2")
