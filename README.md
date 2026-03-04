@@ -26,7 +26,7 @@ No other game does this. The card game is the relationship layer. The lore is de
 ## The two game modes
 
 ### Roguelike
-BOI-style top-down combat across six ecological zones of the station (Botanical, Aquatic, Atmospheric, Mineral, Arctic, Volcanic) plus rare Data floors. The player robot has a modular body — five equipment slots (Head, Torso, Left Arm, Right Arm, Legs) that accept maintenance tool attachments found throughout the station. Permanent upgrades survive death. Everything else is a live bet on your own survival.
+Top-down combat across six ecological zones of the station (Botanical, Aquatic, Atmospheric, Mineral, Arctic, Volcanic) plus rare Data floors. The player robot has a modular body — five equipment slots (Head, Torso, Left Arm, Right Arm, Legs) that accept maintenance tool attachments found throughout the station. Permanent upgrades survive death. Everything else is a live bet on your own survival.
 
 Key mechanic: **early exit**. At any point in a run, the player can abandon and return to the hub, keeping everything found so far. The risk/reward tension is active the entire run, not just at the start.
 
@@ -37,7 +37,7 @@ A deck-based TCG with auto-battler combat resolution, played in the hub cafeteri
 
 ## Emotional foundation
 
-The narrative structure is WALL-E: no villain, no attack, just the slow weight of what happens when something loved is taken for granted until it's too late. The station was built not in triumph but in guilt — a vigil. The creatures on the cards are beautiful and clearly once-living. Players feel the loss before they read a word of lore.
+The narrative structure: no villain, no attack, just the slow weight of what happens when something loved is taken for granted until it's too late. The station was built not in triumph but in guilt — a vigil. The creatures on the cards are beautiful and clearly once-living. Players feel the loss before they read a word of lore.
 
 The surviving robots have intact memory cards. They remember everything. They've had thousands of years to process it alone. Each one has a different relationship to what happened. Bringing them home — and playing cards with them — is how the player assembles the picture.
 
@@ -88,4 +88,6 @@ No third-party dependencies. Scene-based architecture maps cleanly to the room/r
 ## Contact
 
 Solo developer. United States.
-Grant inquiries and collaboration: [add contact]
+Grant inquiries and collaboration:
+Phone: 724-708-7493
+Email: mcghenmike@gmail.com
