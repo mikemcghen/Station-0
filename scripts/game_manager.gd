@@ -11,6 +11,10 @@ enum GameState {
 var current_state: GameState = GameState.HUB
 var _previous_state: GameState = GameState.HUB
 
+const RunEndScreenScene = preload("res://scripts/ui/run_end_screen.gd")
+
+var _run_end_screen: CanvasLayer = null
+
 func _ready() -> void:
 	EventBus.run_started.connect(_on_run_started)
 	EventBus.run_ended.connect(_on_run_ended)
@@ -48,7 +52,10 @@ func start_run() -> void:
 func _on_run_started() -> void:
 	change_state(GameState.RUN)
 
-func _on_run_ended(_survived: bool) -> void:
-	# Body parts are always kept — save before returning to hub
+func _on_run_ended(reached_hub: bool) -> void:
+	# Save immediately — body parts and bank are always kept
 	SaveManager.save()
-	call_deferred("go_to_hub")
+	# Show end screen; it calls go_to_hub() when ready
+	_run_end_screen = RunEndScreenScene.new()
+	get_tree().root.add_child(_run_end_screen)
+	_run_end_screen.show_result(reached_hub)
