@@ -10,7 +10,8 @@ const FADE_IN_TIME  := 0.3
 const FADE_OUT_TIME := 0.3
 const DEATH_HOLD    := 2.5
 
-var _root: Control = null
+var _root: Control  = null
+var _bg:   ColorRect = null
 
 func _ready() -> void:
 	layer        = 10
@@ -65,16 +66,16 @@ func _build_root(bg_color: Color) -> void:
 	if _root:
 		_root.queue_free()
 
-	var bg              := ColorRect.new()
-	bg.color             = bg_color
-	bg.anchor_right      = 1.0
-	bg.anchor_bottom     = 1.0
-	bg.mouse_filter      = Control.MOUSE_FILTER_STOP
-	add_child(bg)
+	_bg              = ColorRect.new()
+	_bg.color         = bg_color
+	_bg.anchor_right  = 1.0
+	_bg.anchor_bottom = 1.0
+	_bg.mouse_filter  = Control.MOUSE_FILTER_STOP
+	add_child(_bg)
 
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_CENTER)
-	bg.add_child(_root)
+	_bg.add_child(_root)
 
 
 func _add_label(text: String, font_size: int, offset: Vector2) -> void:
@@ -88,12 +89,12 @@ func _add_label(text: String, font_size: int, offset: Vector2) -> void:
 
 
 func _fade_in() -> void:
-	modulate.a = 0.0
+	_bg.modulate.a = 0.0
 	var tw := create_tween()
-	tw.tween_property(self, "modulate:a", 1.0, FADE_IN_TIME)
+	tw.tween_property(_bg, "modulate:a", 1.0, FADE_IN_TIME)
 
 
 func _fade_out_then_hub() -> void:
 	var tw := create_tween()
-	tw.tween_property(self, "modulate:a", 0.0, FADE_OUT_TIME)
+	tw.tween_property(_bg, "modulate:a", 0.0, FADE_OUT_TIME)
 	tw.tween_callback(func(): GameManager.go_to_hub())
