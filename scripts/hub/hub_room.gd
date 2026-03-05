@@ -11,6 +11,7 @@ enum HubRoomType {
 	SHOP         = 3,
 	CONTROL_ROOM = 4,
 	TROPHY_ROOM  = 5,
+	PRACTICE     = 6,
 }
 
 # ---------------------------------------------------------------------------
@@ -31,6 +32,7 @@ const ROOM_NAMES := [
 	"SHOP",           # 3
 	"CONTROL ROOM",   # 4
 	"TROPHY ROOM",    # 5
+	"PRACTICE ROOM",  # 6
 ]
 
 const FLOOR_COLORS := [
@@ -40,6 +42,7 @@ const FLOOR_COLORS := [
 	Color(0.14, 0.10, 0.14),   # SHOP         — purple tint
 	Color(0.08, 0.12, 0.18),   # CONTROL_ROOM — blue tint
 	Color(0.16, 0.14, 0.08),   # TROPHY_ROOM  — warm gold tint
+	Color(0.12, 0.16, 0.13),   # PRACTICE     — muted green
 ]
 
 # ---------------------------------------------------------------------------
@@ -73,8 +76,11 @@ func setup(room_type: int, connections: Dictionary, hub_ref: Node) -> void:
 
 	if _type == HubRoomType.STAGING:
 		_build_run_portal()
+		_build_atm()
 	elif _type == HubRoomType.ARMORY:
 		_build_armory_workbench()
+	elif _type == HubRoomType.PRACTICE:
+		_build_practice_room()
 
 # ---------------------------------------------------------------------------
 # Wall generation (same logic as room.gd)
@@ -256,3 +262,50 @@ func _build_run_portal() -> void:
 		if b.is_in_group("player"):
 			GameManager.call_deferred("start_run"))
 	contents.add_child(area)
+
+# ---------------------------------------------------------------------------
+# Deposit machine — shows bank balance, lets player set withdrawal for next run
+# ---------------------------------------------------------------------------
+func _build_atm() -> void:
+	# Visual — grey terminal with cyan screen
+	var body      := Polygon2D.new()
+	body.polygon   = PackedVector2Array([-28, -40, 28, -40, 28, 40, -28, 40])
+	body.color     = Color(0.25, 0.28, 0.32)
+	body.position  = Vector2(200, -150)
+	contents.add_child(body)
+
+	var screen      := Polygon2D.new()
+	screen.polygon   = PackedVector2Array([-18, -28, 18, -28, 18, 0, -18, 0])
+	screen.color     = Color(0.1, 0.8, 0.9, 0.85)
+	screen.position  = Vector2(200, -150)
+	contents.add_child(screen)
+
+	var lbl      := Label.new()
+	lbl.text     = "DEPOSIT"
+	lbl.position = Vector2(172, -202)
+	contents.add_child(lbl)
+
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask  = 2
+
+	var cs := CollisionShape2D.new()
+	var rs := RectangleShape2D.new()
+	rs.size  = Vector2(56, 80)
+	cs.shape = rs
+	area.add_child(cs)
+	area.position = Vector2(200, -150)
+
+	area.body_entered.connect(func(b: Node) -> void:
+		if b.is_in_group("player"):
+			_hub.call_deferred("open_atm"))
+	contents.add_child(area)
+
+# ---------------------------------------------------------------------------
+# Practice room — placeholder until VS combat is implemented
+# ---------------------------------------------------------------------------
+func _build_practice_room() -> void:
+	var lbl      := Label.new()
+	lbl.text     = "PRACTICE ROOM — OFFLINE"
+	lbl.position = Vector2(-90, -20)
+	contents.add_child(lbl)

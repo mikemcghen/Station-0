@@ -38,7 +38,10 @@ func go_to_hub() -> void:
 	get_tree().change_scene_to_file("res://scenes/hub/hub.tscn")
 
 func start_run() -> void:
-	RunManager.start_run(0, [], [])
+	# Bring everything in the wallet into the run — it's on the player, so it's at risk
+	var brought := UpgradeManager.wallet_credits
+	UpgradeManager.wallet_credits = 0
+	RunManager.start_run(brought, [], [])
 	change_state(GameState.RUN)
 	get_tree().change_scene_to_file("res://scenes/run/floor.tscn")
 

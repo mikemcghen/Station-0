@@ -14,6 +14,7 @@ signal floor_cleared(floor_number: int)
 # ---------------------------------------------------------------------------
 signal room_entered(room_id: String)
 signal room_cleared(room_id: String)
+signal room_revealed
 
 # ---------------------------------------------------------------------------
 # Items & Loot

@@ -55,6 +55,8 @@ func _ready() -> void:
 	if RunManager.player_health_carry > 0.0:
 		current_health = minf(RunManager.player_health_carry, max_health)
 		RunManager.player_health_carry = -1.0
+	else:
+		current_health = max_health   # fresh run — start at full HP
 
 func recalculate() -> void:
 	speed      = BASE_SPEED      + UpgradeManager.get_stat_modifier("speed")
@@ -122,13 +124,13 @@ func _apply_run_items() -> void:
 				fragmented_map = true
 			RunItem.Effect.OVERCLOCK:
 				overclock = true
-				fire_rate *= 1.4
+				fire_rate *= 1.6
 
 func _apply_part_flags() -> void:
 	shield_projector = false
 	# Scatter from body parts (accumulate with run item scatter)
 	for slot in UpgradeManager.SLOTS:
-		var part := UpgradeManager.get_equipped_part(slot)
+		var part: BodyPartData = UpgradeManager.get_equipped_part(slot) as BodyPartData
 		if part == null:
 			continue
 		if part.shield_projector:

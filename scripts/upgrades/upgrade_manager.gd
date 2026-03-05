@@ -2,7 +2,12 @@ extends Node
 
 const SLOTS: Array[String] = ["head", "torso", "left_arm", "right_arm", "legs"]
 
-var hub_credits: int = 0
+var hub_credits:   int = 0   # safe bank — survives death, stored in deposit machine
+var wallet_credits: int = 0   # on-hand scrap — carried by player, shown on HUD
+
+func change_wallet(delta: int) -> void:
+	wallet_credits = maxi(wallet_credits + delta, 0)
+	EventBus.credits_changed.emit(wallet_credits)
 
 # slot -> BodyPart resource path (empty string = default/base part)
 var equipped_parts: Dictionary = {

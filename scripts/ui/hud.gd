@@ -121,7 +121,8 @@ func _update_display(current_hp: float) -> void:
 func _build_credits_label() -> void:
 	_credits_label          = Label.new()
 	_credits_label.position = Vector2(16, 72)
-	_credits_label.text     = "SCRAP: %d" % UpgradeManager.hub_credits
+	var amount := RunManager.run_credits if RunManager.run_active else UpgradeManager.wallet_credits
+	_credits_label.text     = "SCRAP: %d" % amount
 	add_child(_credits_label)
 
 func _on_credits_changed(new_total: int) -> void:

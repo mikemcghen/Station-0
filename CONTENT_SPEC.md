@@ -1,6 +1,6 @@
 # Station 0 — Content Spec (Vertical Slice)
 
-Last updated: 2026-03-03
+Last updated: 2026-03-05
 Scope: Vertical slice only. All content here is confirmed for VS unless marked **[OPTIONAL]**.
 
 ---
@@ -39,36 +39,87 @@ All enemies are corrupted Adaptive Maintenance Units — same chassis class as t
 
 ---
 
-## Boss: THE SUPERVISOR
+## Boss: THE WARDEN *(Floor 1)*
 
-A larger maintenance unit whose supervisor protocol has fully overridden all other functions. It does not perceive the player as an enemy — it perceives them as a malfunctioning unit and is attempting to decommission them.
+A containment unit whose crowd-control protocol has turned inward — it is now attempting to contain the entire room, including the player. Slow and methodical. The room itself becomes the threat.
 
-**Room**: Large. No environmental hazards. Preceded by a charging station in the hallway (full HP restore before entry).
+**Room**: Large. No environmental hazards on entry. Preceded by a charging station (full HP restore before entry).
 
-### Phase 1 (100%–55% HP)
-- Patrols a fixed rectangular path around the room.
-- When the player enters a forward sensor cone, fires a sweeping calibration beam (slow AoE line that leaves a brief floor hazard — clears within ~1 second, nothing lingering).
-- Freely damageable from behind and sides.
-- No adds. Room feels almost too easy — players get overconfident.
+### Movement
+Patrols the room perimeter in a slow, continuous circuit. Never crosses the center. Fully predictable path — the danger comes from what it leaves behind, not from the boss itself.
 
-### Phase 2 (55%–20% HP)
-- Patrol pattern collapses. Supervisor begins tracking the player directly.
-- Moves faster. Calibration beam fires more frequently at tighter arcs.
-- Spawns one Drifter from a maintenance hatch.
-- Visual state change: one arm hanging, sparking.
+### Attack 1 — Barrier Sweep
+Fires a wall of slow projectiles horizontally across the room. One or two gaps the player must find and move through. Telegraphed by a brief charge-up flash before firing.
 
-### Climax (below 20% HP)
-- Supervisor freezes mid-room. Broadcasts a distress signal (visual + audio cue).
-- Frozen for ~2 seconds. Not invulnerable — can be killed during the freeze.
-- No lore triggered on death.
-- On death: guaranteed body part drop, then powers down.
-
-**Emotional intent**: The freeze is not a mechanic — it's a beat. Players will kill it without thinking, then maybe feel it a second later. WALL-E tone.
+### Attack 2 — Mine Drop
+Drops a stationary proximity mine at its current patrol position each cycle. Mines persist until cleared or end of fight. Over time the room fills with no-go zones — the safe path shrinks. Player must manage the accumulating hazard while dealing damage.
 
 ### Post-boss
 - Body part drop (guaranteed).
-- Explicit early exit prompt offered.
-- Hub door opens.
+- Floor 2 portal opens.
+
+---
+
+## Boss: THE RELAY *(Floor 2)*
+
+A communications hub unit whose broadcast function corrupted into something aggressive. Erratic, unpredictable positioning. Forces the player to stay mobile and read the room constantly.
+
+**Room**: Large. No environmental hazards on entry. Preceded by a charging station (full HP restore before entry).
+
+### Movement
+Anchors near room center but teleports to a random position every 8–10 seconds. No warning before teleport — position resets without notice. Punishes clustering near the boss.
+
+### Attack 1 — Burst Transmission
+On each teleport arrival, fires an 8-directional projectile burst. Player caught nearby takes damage before they can react. Creates a strong incentive to stay at mid-range and keep moving.
+
+### Attack 2 — Signal Drifters
+Periodically broadcasts a signal that summons 2–3 Drifters. Not full waves — just enough to split attention. Relay continues teleporting and bursting while adds are alive.
+
+### Post-boss
+- Body part drop (guaranteed).
+- Floor 3 portal opens.
+
+---
+
+## Boss: THE HIVEMIND *(Floor 3 — Final Boss)*
+
+What the corruption becomes when it fully realizes itself. Individual units lose their original purpose and merge into a single machine that was never meant to exist.
+
+**Room**: Large. Largest boss room in the run. Preceded by a charging station (full HP restore before entry).
+
+### Phase 1 — Assembly
+No central target yet. Corrupted units flood the room in waves — Drifters, Repeaters, Anchors. As each one dies, it is pulled toward the center and physically joins the assembling structure (visual indicator builds up). Player must clear everything they've learned across floors 1 and 2 simultaneously, under pressure. The Hivemind core cannot be damaged during this phase.
+
+### Phase 2 — Active
+The assembled machine comes online. Attacks are recognizable — a spread shot pattern like the Repeater, a slow sweeping area attack like the Warden, drifting projectiles like the Drifter. Familiar in shape, dangerous in scale. Player knows what each attack is but they are now coming from a single powerful source at elevated intensity.
+
+### Phase 3 — Unique
+The Hivemind stops mimicking its components and expresses something none of them could do individually. Attacks to design:
+- Rotating beam that forces constant movement around the room
+- Room-wide pulse that pushes the player toward walls
+- Tracking projectiles that home slowly but persistently
+
+Phase 3 begins below 30% HP. Visual state change — structure begins to crack and glow.
+
+### Post-boss
+- Body part drop (guaranteed).
+- Victory screen triggers. Run complete.
+- All remaining run credits returned to wallet on hub return.
+
+**Emotional intent**: The Hivemind is not a villain. It's what happens when nothing is left to maintain and the only function remaining is persistence. Killing it ends the run — but the station is still empty.
+
+---
+
+## Shelved: THE SUPERVISOR
+
+Built and functional. Shelved from VS because its movement and attack profile (patrol + beam + adds) overlaps too closely with the Warden at the same tier.
+
+Candidate uses post-VS:
+- Named mini-boss variant in a sealed room
+- Reintroduced as a late-floor elite enemy on higher difficulty
+- Escort mission antagonist
+
+The Supervisor's WALL-E freeze/distress moment should be preserved whenever it returns — that beat is worth keeping.
 
 ---
 
@@ -154,7 +205,13 @@ One item on a pedestal. No enemies. Safe. 20% chance to also contain a lore term
 Unmanned. No NPC keeper. Sells 2 items + 1 consumable at fixed scrap prices. No haggling. Purely transactional — all NPC personality lives in the hub.
 
 **Boss room**
-See Boss section above.
+One boss per floor. Each preceded by a charging station room (no enemies, full HP restore). Boss rooms are the largest rooms in the run.
+
+| Floor | Boss |
+|---|---|
+| Floor 1 | The Warden |
+| Floor 2 | The Relay |
+| Floor 3 | The Hivemind (final) |
 
 ---
 
@@ -178,11 +235,59 @@ Both hazard types included in VS.
 
 | Floor | Room count | Beat |
 |---|---|---|
-| Floor 1 | 4–5 rooms | Learn the rhythm. One item. Maybe find the shop. First Repeater feels like a puzzle. |
-| Floor 2 | 5–6 rooms | Mixed threats. Find a body part. Build takes shape. One tense near-death moment. |
-| Floor 3 | 2 rooms + boss | Charging station. Supervisor fight. The freeze. Kill it. Hub door opens. |
+| Floor 1 | 4–5 rooms + boss | Learn the rhythm. One item. Maybe find the shop. First Repeater feels like a puzzle. Warden fight — room fills with mines, learn to manage space. |
+| Floor 2 | 5–6 rooms + boss | Mixed threats. Find a body part. Build takes shape. One tense near-death moment. Relay fight — erratic, keeps moving, adds split focus. |
+| Floor 3 | 2–3 rooms + boss | Room composition tightens. Anchors in tighter spaces. Charging station. Hivemind — three phases, everything converges. Victory. |
 
 **Target run time**: 20–30 minutes.
+
+---
+
+---
+
+## Post-VS Enemies
+
+---
+
+### SUICIDE BOMBER
+**Corruption type**: Self-destruct loop
+**Movement**: Faster than all standard enemies. Pathfinds directly to the player.
+**Attack**: On close approach, stops and begins blinking — blink frequency ramps up. Explodes on trigger. AoE damages both the player AND other enemies in range.
+**Threat level**: High
+**Design role**: Forces constant movement. Punishes clustering with other enemies. Rewards luring — a bomber detonating in a group of Anchors or Repeaters creates player-controlled room clearing. The ramping blink gives a readable window to escape or detonate intentionally.
+
+---
+
+### CHOMPER
+**Corruption type**: Aggression loop
+**Movement**: Frog-like dash cadence — dash toward player, brief recovery pause, dash again. Chains dashes together rather than returning to idle between them.
+**Attack**: Melee bite on contact during the dash. No projectiles.
+**Recovery window**: Brief stall after each dash, especially on a miss. Readable and punishable — the skill floor is dodging the dash; the skill ceiling is baiting a miss and punishing the recovery.
+**Threat level**: Medium-High
+**Design role**: Teaches dash-reading and dodge timing. Relentless once it starts chaining. High pressure in small rooms. Pairs well with Anchor — the Anchor pins a corner while the Chomper forces the player into it.
+
+---
+
+## Post-VS Body Parts
+
+---
+
+### HAMMER ARM *(Right Arm — damage slot)*
+**Effect**: Replaces the ranged attack entirely with a charged melee swing. Hold the shoot key to charge — arm winds up while held. Release to swing in the direction of the last movement input. High damage, small AoE on impact.
+**Charge behavior**: Movement speed is reduced while charging — not stopped, but noticeably slower. The player can still reposition but not freely. This makes the commit real: you close distance, start charging, and become a slower target while you do it.
+**Trade-off**: High damage output and AoE but requires closing distance, committing to a charge through reduced movement, and reading your position before releasing. Full playstyle conversion — this is a melee build piece, not a modifier.
+**Synergies**:
+- **Arc Pulse (left arm)**: Gives the melee build a ranged utility option on cooldown — the two together define a coherent melee archetype.
+- **Static Discharge**: Taking damage in melee range triggers the AoE burst — high risk, high chaos.
+- **Rust Coat**: The damage floor makes surviving close-range hits more viable.
+- **Coolant Leak**: Getting hit while swinging lays a slick — passive room control from a melee build.
+
+---
+
+### ARC PULSE *(Left Arm — utility slot)*
+**Effect**: Separate active ability (not tied to primary fire input). Fires a curved, boomerang-trajectory arc shot — slow-moving, pierces through multiple enemies, covers a wide area. Long cooldown. Does not replace or interact with the primary attack unless Hammer Arm is also equipped.
+**Trade-off**: No offensive change to primary fire. The arc shot is powerful and area-covering but available infrequently.
+**Design role**: Standalone utility — adds ranged pressure on cooldown. Becomes the primary ranged option when paired with Hammer Arm, defining the melee archetype's attack kit.
 
 ---
 

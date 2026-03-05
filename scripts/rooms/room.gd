@@ -21,22 +21,28 @@ const ANCHOR_SCENE      = preload("res://scenes/enemies/anchor.tscn")
 const SUPERVISOR_SCENE  = preload("res://scenes/enemies/supervisor.tscn")
 const BODY_PART_PICKUP  = preload("res://scenes/upgrades/body_part_pickup.tscn")
 const RUN_ITEM_PICKUP   = preload("res://scenes/items/run_item_pickup.tscn")
+const SHOP_PEDESTAL_SCR = preload("res://scripts/items/shop_item_pedestal.gd")
 
 const ALL_PART_PATHS: Array[String] = [
-	"res://data/body_parts/head_sensor_array.tres",
-	"res://data/body_parts/torso_reinforced_plating.tres",
-	"res://data/body_parts/left_arm_rapid_fire.tres",
-	"res://data/body_parts/right_arm_cannon.tres",
-	"res://data/body_parts/legs_servo_boost.tres",
+	"res://data/body_parts/head_wide_angle_lens.tres",
+	"res://data/body_parts/head_targeting_spike.tres",
+	"res://data/body_parts/torso_reinforced_chassis.tres",
+	"res://data/body_parts/torso_lightweight_frame.tres",
+	"res://data/body_parts/left_arm_scatter_emitter.tres",
+	"res://data/body_parts/left_arm_shield_projector.tres",
+	"res://data/body_parts/right_arm_heavy_emitter.tres",
+	"res://data/body_parts/right_arm_rapid_emitter.tres",
 ]
 
 const ALL_ITEM_PATHS: Array[String] = [
-	"res://data/run_items/plating_shard.tres",
-	"res://data/run_items/range_booster.tres",
-	"res://data/run_items/overclock_chip.tres",
-	"res://data/run_items/ricochet_module.tres",
-	"res://data/run_items/scatter_core.tres",
-	"res://data/run_items/volatile_round.tres",
+	"res://data/run_items/coolant_leak.tres",
+	"res://data/run_items/overclock_module.tres",
+	"res://data/run_items/scrap_magnet.tres",
+	"res://data/run_items/memory_spike.tres",
+	"res://data/run_items/rust_coat.tres",
+	"res://data/run_items/static_discharge.tres",
+	"res://data/run_items/fragmented_map.tres",
+	"res://data/run_items/patch_kit.tres",
 ]
 
 # ---------------------------------------------------------------------------
@@ -69,6 +75,7 @@ func setup(room_data: RoomData, floor_ref: Node) -> void:
 # Activate — called on first (and repeat) entry
 # ---------------------------------------------------------------------------
 func activate() -> void:
+	EventBus.room_entered.emit(data.id if "id" in data else "")
 	if data.visited:
 		_update_door_locks()
 		return
@@ -81,6 +88,9 @@ func activate() -> void:
 			_spawn_boss()
 		RoomData.RoomType.ITEM:
 			_spawn_run_item()
+			data.cleared = true
+		RoomData.RoomType.SHOP:
+			_spawn_shop()
 			data.cleared = true
 		_:
 			data.cleared = true
@@ -232,6 +242,9 @@ func _get_enemy_count() -> int:
 		_:   return randi_range(2, 3)
 
 func _spawn_enemies() -> void:
+	# Hazards first — added to contents before enemies so they draw underneath
+	_spawn_hazards()
+
 	var hw    := ROOM_W / 2.0 - SPAWN_MARGIN
 	var hh    := ROOM_H / 2.0 - SPAWN_MARGIN
 	var pool  := _get_enemy_pool()
@@ -263,6 +276,7 @@ func _on_enemy_died() -> void:
 			_spawn_body_part_drop()
 			_spawn_floor_exit()
 		room_cleared.emit()
+		EventBus.room_cleared.emit(data.id if "id" in data else "")
 		_update_door_locks()
 
 
@@ -320,6 +334,163 @@ func _spawn_run_item() -> void:
 	pickup.item        = load(chosen)
 	pickup.position    = Vector2.ZERO
 	contents.add_child(pickup)
+
+# ---------------------------------------------------------------------------
+# Environmental hazards — spawned in combat rooms
+# ---------------------------------------------------------------------------
+func _spawn_hazards() -> void:
+	# Oil slicks — 0-2 random puddles in the room interior
+	var hw := ROOM_W / 2.0 - SPAWN_MARGIN
+	var hh := ROOM_H / 2.0 - SPAWN_MARGIN
+	for i in randi_range(0, 2):
+		_make_oil_slick(Vector2(randf_range(-hw, hw), randf_range(-hh, hh)))
+
+	# Exposed wiring — 0-2 sections along walls
+	for i in randi_range(0, 2):
+		_make_exposed_wiring()
+
+func _make_oil_slick(pos: Vector2) -> void:
+	var slick := Area2D.new()
+	slick.collision_layer = 0
+	slick.collision_mask  = 2 | 8   # player (2) + enemies (8)
+	slick.position        = pos
+
+	var radius: float = randf_range(44.0, 68.0)
+	var cs := CollisionShape2D.new()
+	var sh := CircleShape2D.new()
+	sh.radius = radius
+	cs.shape  = sh
+	slick.add_child(cs)
+
+	# Visual — flattened dark ellipse (puddle)
+	var poly := Polygon2D.new()
+	var pts  := PackedVector2Array()
+	var segs := 14
+	for i in segs:
+		var a := i * TAU / segs
+		pts.append(Vector2(cos(a) * radius, sin(a) * radius * 0.55))
+	poly.polygon = pts
+	poly.color   = Color(0.04, 0.07, 0.14, 0.78)
+	slick.add_child(poly)
+
+	slick.body_entered.connect(func(b: Node) -> void:
+		if b.is_in_group("player") and b.has_method("enter_slick"):
+			b.enter_slick()
+		elif b.is_in_group("enemies") and b.has_method("apply_slow"):
+			b.apply_slow(999.0, 0.35))
+	slick.body_exited.connect(func(b: Node) -> void:
+		if b.is_in_group("player") and b.has_method("exit_slick"):
+			b.exit_slick()
+		elif b.is_in_group("enemies") and b.has_method("apply_slow"):
+			b.apply_slow(0.0, 1.0))   # clear slow immediately
+
+	contents.add_child(slick)
+
+func _make_exposed_wiring() -> void:
+	var hw         := ROOM_W / 2.0 - WALL_T
+	var hh         := ROOM_H / 2.0 - WALL_T
+	var wire_len   := randf_range(80.0, 150.0)
+	var wire_thick := 14.0
+	var inset      := wire_thick / 2.0 + 2.0
+	var half       := wire_len / 2.0
+	var hdw        := DOOR_W / 2.0   # 40 — half door gap on horiz walls
+	var hdh        := DOOR_H / 2.0   # 40 — half door gap on vert walls
+
+	# Build candidates: {wall, min, max} for center position along the wall.
+	# Door walls get two segments (one each side of gap); non-door walls get one full segment.
+	var wall_dirs  := ["up", "down", "left", "right"]
+	var candidates : Array = []
+	for wall_id in 4:
+		var has_door  := data.connections.has(wall_dirs[wall_id])
+		var is_horiz  := wall_id <= 1
+		var extent    := hw if is_horiz else hh
+		var door_half := hdw if is_horiz else hdh
+		if has_door:
+			var a_min := -extent + half; var a_max := -door_half - half
+			var b_min :=  door_half + half; var b_max := extent - half
+			if a_min <= a_max: candidates.append({"wall": wall_id, "min": a_min, "max": a_max})
+			if b_min <= b_max: candidates.append({"wall": wall_id, "min": b_min, "max": b_max})
+		else:
+			var s_min := -extent + half; var s_max := extent - half
+			if s_min <= s_max: candidates.append({"wall": wall_id, "min": s_min, "max": s_max})
+
+	if candidates.is_empty():
+		return
+
+	var chosen: Dictionary = candidates[randi() % candidates.size()]
+	var wall   := chosen["wall"] as int
+	var along  := randf_range(chosen["min"], chosen["max"])
+
+	var pos:  Vector2
+	var size: Vector2
+	match wall:
+		0:  pos = Vector2(along, -hh + inset); size = Vector2(wire_len, wire_thick)
+		1:  pos = Vector2(along,  hh - inset); size = Vector2(wire_len, wire_thick)
+		2:  pos = Vector2(-hw + inset, along); size = Vector2(wire_thick, wire_len)
+		_:  pos = Vector2( hw - inset, along); size = Vector2(wire_thick, wire_len)
+
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask  = 2   # player layer
+	area.position        = pos
+
+	var cs := CollisionShape2D.new()
+	var rs := RectangleShape2D.new()
+	rs.size  = size
+	cs.shape = rs
+	area.add_child(cs)
+
+	# Visual — bright yellow-orange strip
+	var poly := Polygon2D.new()
+	var hx   := size.x / 2.0
+	var hy   := size.y / 2.0
+	poly.polygon = PackedVector2Array([
+		Vector2(-hx, -hy), Vector2(hx, -hy),
+		Vector2( hx,  hy), Vector2(-hx,  hy),
+	])
+	poly.color = Color(1.0, 0.85, 0.05, 0.90)
+	area.add_child(poly)
+
+	# Damage on contact — player iframes act as natural cooldown
+	area.body_entered.connect(func(b: Node) -> void:
+		if b.is_in_group("player") and b.has_method("take_damage"):
+			b.take_damage(1.0))
+
+	contents.add_child(area)
+
+# ---------------------------------------------------------------------------
+# Shop spawning — 2 random items + 1 Patch Kit, spaced horizontally
+# ---------------------------------------------------------------------------
+func _spawn_shop() -> void:
+	# Item slot paths (exclude Patch Kit from the random pool)
+	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
+	var item_pool: Array[String] = []
+	for p in ALL_ITEM_PATHS:
+		if p != PATCH_KIT_PATH:
+			item_pool.append(p)
+	item_pool.shuffle()
+
+	# Positions: left item, center item, right = Patch Kit
+	var positions: Array[Vector2] = [
+		Vector2(-200, 0),
+		Vector2(   0, 0),
+		Vector2( 200, 0),
+	]
+
+	var chosen: Array[String] = [
+		item_pool[0],
+		item_pool[1],
+		PATCH_KIT_PATH,
+	]
+	var prices: Array[int] = [20, 20, 10]
+
+	for i in 3:
+		var pedestal       := Area2D.new()
+		pedestal.set_script(SHOP_PEDESTAL_SCR)
+		pedestal.position   = positions[i]
+		pedestal.set("item",  load(chosen[i]))
+		pedestal.set("price", prices[i])
+		contents.add_child(pedestal)
 
 # ---------------------------------------------------------------------------
 # Door locking

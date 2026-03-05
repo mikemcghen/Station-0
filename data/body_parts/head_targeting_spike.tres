@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BodyPartData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/upgrades/body_part_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+slot = "head"
+display_name = "Targeting Spike"
+mod_proj_speed = 208.0
+mod_range = 100.0

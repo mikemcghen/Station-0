@@ -107,7 +107,7 @@ The card game isn't a side activity. It's the robots' way of holding on.
 
 After humanity ended, surviving robots had access to everything humans recorded — every species catalogued, every habitat surveyed, every ecosystem studied. They couldn't bring any of it back. They couldn't fix what happened. What they could do was build something that kept it alive in a different form: a game where the creatures of a dead planet are remembered as powerful, beautiful, worth caring about.
 
-Every card in the game is an act of preservation. The robots who built these series were grieving. The player inherits that grief without knowing it, and discovers it through play.
+Every card in the game is an act of preservation. The robots who built these series had spent thousands of years alongside the archived data — these creatures became real to them through that proximity, and the card game came from that genuine affinity. The player inherits that connection without knowing it, and discovers it through play.
 
 **This is why the card game has to be good.** It needs to stand on its own as a system worth engaging with — not because the lore forces you to, but because you want to. The emotional layer only lands if the mechanical layer already has you.
 

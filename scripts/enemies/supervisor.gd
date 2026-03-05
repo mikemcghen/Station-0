@@ -1,4 +1,4 @@
-extends CharacterBody2D
+extends EnemyBase
 
 # ---------------------------------------------------------------------------
 # The Supervisor — Phase 1/2/Climax boss
@@ -8,14 +8,6 @@ extends CharacterBody2D
 enum Phase { ONE, TWO, CLIMAX }
 
 const DRIFTER_SCENE = preload("res://scenes/enemies/drifter.tscn")
-
-# ---------------------------------------------------------------------------
-# Stats
-# ---------------------------------------------------------------------------
-var max_health:       float = 200.0
-var current_health:   float = 200.0
-var contact_damage:   float = 1.0
-var contact_cooldown: float = 0.8
 
 # ---------------------------------------------------------------------------
 # Patrol (Phase 1)
@@ -47,16 +39,18 @@ const WIND_UP_DURATION := 0.65   # seconds of warning before beam fires
 const FREEZE_DURATION := 2.0
 
 # ---------------------------------------------------------------------------
+# Phase 2 Drifter spawning — one at a time, over a fixed window
+# ---------------------------------------------------------------------------
+const DRIFTER_SPAWN_COUNT    := 4      # total drifters spawned in phase 2
+const DRIFTER_SPAWN_INTERVAL := 8.0   # seconds between each spawn
+
+# ---------------------------------------------------------------------------
 # Internal state
 # ---------------------------------------------------------------------------
 var _phase:         Phase  = Phase.ONE
-var _player:        Node2D = null
 
 var _patrol_points: Array[Vector2] = []
 var _patrol_index:  int   = 0
-
-var _contact_timer: float = 0.0
-var _flash_timer:   float = 0.0
 
 # Beam state
 var _beam_timer:     float  = 1.5    # initial delay before first beam check
@@ -65,21 +59,28 @@ var _beam_node:      Node2D = null
 var _beam_dur_timer: float  = 0.0
 
 # Wind-up state
-var _winding_up:   bool    = false
-var _wind_up_timer: float  = 0.0
+var _winding_up:    bool    = false
+var _wind_up_timer: float   = 0.0
 var _wind_up_dir:   Vector2 = Vector2.RIGHT   # locked direction when wind-up starts
 
-var _drifter_spawned: bool  = false
-var _freeze_timer:    float = 0.0
+# Phase 2 Drifter spawning
+var _drifters_spawned: int   = 0
+var _drifter_timer:    float = DRIFTER_SPAWN_INTERVAL
 
-@onready var visual: Node2D = $Visual
+var _freeze_timer: float = 0.0
+
+# Facing indicator — Line2D child added to visual at runtime
+var _facing_indicator: Line2D = null
 
 # ---------------------------------------------------------------------------
 # Ready
 # ---------------------------------------------------------------------------
 func _ready() -> void:
-	add_to_group("enemies")
-	$ContactArea.body_entered.connect(_on_contact_entered)
+	max_health       = 200.0
+	current_health   = 200.0
+	contact_damage   = 1.0
+	contact_cooldown = 0.8
+	super._ready()
 	var c := global_position
 	_patrol_points = [
 		c + Vector2(-PATROL_W, -PATROL_H),
@@ -87,6 +88,23 @@ func _ready() -> void:
 		c + Vector2( PATROL_W,  PATROL_H),
 		c + Vector2(-PATROL_W,  PATROL_H),
 	]
+	_build_facing_indicator()
+
+# ---------------------------------------------------------------------------
+# Facing indicator — arrow line attached to the visual node
+# ---------------------------------------------------------------------------
+func _build_facing_indicator() -> void:
+	var arrow := Line2D.new()
+	arrow.width         = 3.0
+	arrow.default_color = Color(1.0, 0.9, 0.3, 0.85)
+	arrow.add_point(Vector2(0.0, 0.0))
+	arrow.add_point(Vector2(22.0, 0.0))
+	visual.add_child(arrow)
+	_facing_indicator = arrow
+
+func _update_facing(dir: Vector2) -> void:
+	if _facing_indicator != null:
+		_facing_indicator.rotation = dir.angle()
 
 # ---------------------------------------------------------------------------
 # Physics loop
@@ -100,12 +118,11 @@ func _physics_process(delta: float) -> void:
 	var pct := current_health / max_health
 	if _phase == Phase.ONE and pct <= 0.55:
 		_enter_phase_two()
-	elif _phase == Phase.TWO and pct <= 0.20:
+	elif _phase == Phase.TWO and current_health <= 5.0:
 		_enter_climax()
 
 	match _phase:
 		Phase.ONE:
-			# Stop and lock on during wind-up
 			if _winding_up:
 				velocity = Vector2.ZERO
 			else:
@@ -115,25 +132,38 @@ func _physics_process(delta: float) -> void:
 				velocity = Vector2.ZERO
 			else:
 				_do_chase(PATROL_SPEED_P2)
-			_maybe_spawn_drifter()
+			_tick_drifter_spawns(delta)
 		Phase.CLIMAX:
 			_do_climax(delta)
 
-	move_and_slide()
+	# Update facing indicator (hidden during climax)
+	if _phase != Phase.CLIMAX:
+		if _facing_indicator != null:
+			_facing_indicator.visible = true
+		var facing: Vector2
+		if _winding_up:
+			facing = _wind_up_dir
+		elif velocity.length() > 1.0:
+			facing = velocity.normalized()
+		elif _player != null:
+			facing = (_player.global_position - global_position).normalized()
+		else:
+			facing = Vector2.RIGHT
+		_update_facing(facing)
+	else:
+		if _facing_indicator != null:
+			_facing_indicator.visible = false
 
-# ---------------------------------------------------------------------------
-# Player lookup
-# ---------------------------------------------------------------------------
-func _find_player() -> void:
-	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player")
+	move_and_slide()
 
 # ---------------------------------------------------------------------------
 # Phase transitions
 # ---------------------------------------------------------------------------
 func _enter_phase_two() -> void:
-	_phase = Phase.TWO
-	_winding_up = false
+	_phase            = Phase.TWO
+	_winding_up       = false
+	_drifters_spawned = 0
+	_drifter_timer    = DRIFTER_SPAWN_INTERVAL * 0.5   # first spawn sooner
 
 func _enter_climax() -> void:
 	_phase = Phase.CLIMAX
@@ -168,15 +198,18 @@ func _do_chase(spd: float) -> void:
 	velocity = (_player.global_position - global_position).normalized() * spd
 
 # ---------------------------------------------------------------------------
-# Phase 2 — spawn one Drifter
+# Phase 2 — spawn Drifters one at a time on a fixed interval
 # ---------------------------------------------------------------------------
-func _maybe_spawn_drifter() -> void:
-	if _drifter_spawned:
+func _tick_drifter_spawns(delta: float) -> void:
+	if _drifters_spawned >= DRIFTER_SPAWN_COUNT:
 		return
-	_drifter_spawned = true
-	var drifter = DRIFTER_SCENE.instantiate()
-	drifter.position = (get_parent() as Node2D).to_local(global_position + Vector2(0, 130))
-	get_parent().call_deferred("add_child", drifter)
+	_drifter_timer -= delta
+	if _drifter_timer <= 0.0:
+		var drifter = DRIFTER_SCENE.instantiate()
+		drifter.position = (get_parent() as Node2D).to_local(global_position + Vector2(0, 130))
+		get_parent().call_deferred("add_child", drifter)
+		_drifters_spawned += 1
+		_drifter_timer = DRIFTER_SPAWN_INTERVAL
 
 # ---------------------------------------------------------------------------
 # Climax — frozen distress signal, then die
@@ -196,7 +229,6 @@ func _tick_beam(delta: float) -> void:
 	if _phase == Phase.CLIMAX:
 		return
 
-	# Active beam — count down duration
 	if _beam_active:
 		_beam_dur_timer -= delta
 		if _beam_dur_timer <= 0.0:
@@ -206,7 +238,6 @@ func _tick_beam(delta: float) -> void:
 				_beam_node = null
 		return
 
-	# Wind-up — boss is stopped and flashing; fires when timer expires
 	if _winding_up:
 		_wind_up_timer -= delta
 		if _wind_up_timer <= 0.0:
@@ -216,19 +247,16 @@ func _tick_beam(delta: float) -> void:
 			_beam_timer = cd
 		return
 
-	# Cooldown between beams
 	if _beam_timer > 0.0:
 		_beam_timer -= delta
 		return
 
-	# Check sensor cone — start wind-up if player is in range
 	if _player_in_sensor_cone():
 		_winding_up    = true
 		_wind_up_timer = WIND_UP_DURATION
-		# Lock the fire direction to current heading at the moment of detection
 		_wind_up_dir   = velocity.normalized() if velocity.length() > 1.0 else Vector2.RIGHT
 	else:
-		_beam_timer = 0.3   # recheck soon
+		_beam_timer = 0.3
 
 func _player_in_sensor_cone() -> bool:
 	if _player == null:
@@ -243,7 +271,7 @@ func _fire_beam() -> void:
 	_beam_active    = true
 	_beam_dur_timer = BEAM_DURATION
 
-	var forward  := _wind_up_dir   # use direction locked at wind-up start
+	var forward  := _wind_up_dir
 	var beam_len := BEAM_RANGE
 	var beam_w   := 30.0
 	var offset   := 24.0
@@ -280,7 +308,7 @@ func _fire_beam() -> void:
 	_beam_node = beam
 
 # ---------------------------------------------------------------------------
-# Damage / death
+# Damage / death — override base to emit boss signals; no drop (room handles it)
 # ---------------------------------------------------------------------------
 func take_damage(amount: float) -> void:
 	current_health -= amount
@@ -293,46 +321,26 @@ func _die() -> void:
 	EventBus.boss_died.emit()
 	if is_instance_valid(_beam_node):
 		_beam_node.queue_free()
-	_spawn_drop()
-	queue_free()
-
-func _spawn_drop() -> void:
-	var orb = preload("res://scenes/enemies/currency_orb.tscn").instantiate()
-	orb.position = (get_parent() as Node2D).to_local(global_position)
-	get_parent().call_deferred("add_child", orb)
+	queue_free()   # no drop — room.gd spawns the guaranteed body part
 
 # ---------------------------------------------------------------------------
-# Contact damage
-# ---------------------------------------------------------------------------
-func _on_contact_entered(body: Node) -> void:
-	if body.is_in_group("player") and _contact_timer == 0.0:
-		body.take_damage(contact_damage)
-		_contact_timer = contact_cooldown
-
-func _tick_contact(delta: float) -> void:
-	_contact_timer = maxf(_contact_timer - delta, 0.0)
-
-# ---------------------------------------------------------------------------
-# Visual — flash on hit, wind-up warning pulse, phase tints, climax strobe
+# Visual — overrides base _tick_flash with phase-aware tints
 # ---------------------------------------------------------------------------
 func _tick_flash(delta: float) -> void:
 	if _phase == Phase.CLIMAX:
 		return   # climax handles its own visual in _do_climax
 
-	# Wind-up: rapid yellow-white warning pulse — overrides everything else
 	if _winding_up:
 		var pulse := fmod(_wind_up_timer, 0.18) < 0.09
 		var base  := Color(1.0, 0.65, 0.2) if _phase == Phase.TWO else Color(1.0, 1.0, 1.0)
 		visual.modulate = Color(2.4, 2.1, 0.3) if pulse else base
 		return
 
-	# Hit flash
 	if _flash_timer > 0.0:
 		_flash_timer -= delta
 		visual.modulate = Color(2.5, 2.5, 2.5)
 		return
 
-	# Resting tint per phase
 	if _phase == Phase.TWO:
 		visual.modulate = Color(1.0, 0.65, 0.2)
 	else:

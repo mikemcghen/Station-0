@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://atm_ui"]
+
+[ext_resource type="Script" path="res://scripts/ui/atm_ui.gd" id="1"]
+
+[node name="AtmUI" type="CanvasLayer"]
+script = ExtResource("1")

@@ -1,93 +1,95 @@
-extends CharacterBody2D
+extends EnemyBase
 
 # ---------------------------------------------------------------------------
 # ANCHOR — Structural integrity corruption
-# Pathfinds to nearest wall, locks in. Fires slow homing projectiles.
-# Does not move once anchored.
+# Drifts to a random floor point, anchors for a random duration while firing
+# homing projectiles, then picks a new point. Invincible while drifting.
 # ---------------------------------------------------------------------------
 
 const ENEMY_PROJECTILE = preload("res://scenes/enemies/enemy_projectile.tscn")
 
-enum State { SEEKING, ANCHORED }
+enum State { DRIFTING, ANCHORED }
 
-var max_health:      float = 40.0
-var current_health:  float = 40.0
-var speed:           float = 95.0
-var contact_damage:  float = 0.5
-var contact_cooldown: float = 0.8
-
-const SHOT_COOLDOWN  := 2.2
 # Room interior half-extents (960×540 room, 32px walls, 16px gap buffer)
 const INNER_HALF_X   := 432.0
 const INNER_HALF_Y   := 222.0
+# Margin from walls so it stays on the floor interior
+const FLOOR_MARGIN   := 80.0
 
-var _player:        Node2D = null
-var _state:         State  = State.SEEKING
-var _target_wall:   Vector2
-var _shot_timer:    float  = 1.0   # initial fire delay
-var _contact_timer: float  = 0.0
-var _flash_timer:   float  = 0.0
+const SHOT_COOLDOWN   := 2.2
+const ANCHOR_TIME_MIN := 3.0
+const ANCHOR_TIME_MAX := 6.0
 
-@onready var visual: Node2D = $Visual
+var _state:        State   = State.DRIFTING
+var _target_pos:   Vector2
+var _shot_timer:   float   = 1.0
+var _anchor_timer: float   = 0.0
 
 func _ready() -> void:
-	add_to_group("enemies")
-	$ContactArea.body_entered.connect(_on_contact_entered)
-	_compute_wall_target()
+	max_health     = 40.0
+	current_health = 40.0
+	speed          = 95.0
+	contact_damage = 0.5
+	super._ready()
+	_pick_floor_point()
 
 # ---------------------------------------------------------------------------
-# Find the nearest wall face and set it as the target
+# Pick a random point within the room interior
 # ---------------------------------------------------------------------------
-func _compute_wall_target() -> void:
+func _pick_floor_point() -> void:
 	var room_center: Vector2 = (get_parent() as Node2D).global_position
-	var lp:          Vector2 = global_position - room_center
-
-	var d_left:  float = lp.x - (-INNER_HALF_X)
-	var d_right: float = INNER_HALF_X - lp.x
-	var d_up:    float = lp.y - (-INNER_HALF_Y)
-	var d_down:  float = INNER_HALF_Y - lp.y
-	var md:      float = minf(minf(d_left, d_right), minf(d_up, d_down))
-
-	if md == d_left:
-		_target_wall = room_center + Vector2(-INNER_HALF_X, lp.y)
-	elif md == d_right:
-		_target_wall = room_center + Vector2( INNER_HALF_X, lp.y)
-	elif md == d_up:
-		_target_wall = room_center + Vector2(lp.x, -INNER_HALF_Y)
-	else:
-		_target_wall = room_center + Vector2(lp.x,  INNER_HALF_Y)
+	var rx: float = randf_range(-INNER_HALF_X + FLOOR_MARGIN, INNER_HALF_X - FLOOR_MARGIN)
+	var ry: float = randf_range(-INNER_HALF_Y + FLOOR_MARGIN, INNER_HALF_Y - FLOOR_MARGIN)
+	_target_pos = room_center + Vector2(rx, ry)
 
 func _physics_process(delta: float) -> void:
 	_find_player()
 	_tick_contact(delta)
 	_tick_flash(delta)
+	_tick_slow(delta)
+
 	match _state:
-		State.SEEKING:
+		State.DRIFTING:
 			_do_seek()
 		State.ANCHORED:
 			_do_anchored(delta)
+
+	velocity *= _slow_factor
 	move_and_slide()
 
-func _find_player() -> void:
-	if _player == null or not is_instance_valid(_player):
-		_player = get_tree().get_first_node_in_group("player")
+# ---------------------------------------------------------------------------
+# Invincible while drifting
+# ---------------------------------------------------------------------------
+func take_damage(amount: float) -> void:
+	if _state == State.DRIFTING:
+		return
+	super.take_damage(amount)
 
 # ---------------------------------------------------------------------------
-# Move toward the nearest wall, then lock in
+# Drift toward target floor point, then anchor
 # ---------------------------------------------------------------------------
 func _do_seek() -> void:
-	var diff := _target_wall - global_position
+	var diff := _target_pos - global_position
 	if diff.length() < 12.0:
-		velocity = Vector2.ZERO
-		_state = State.ANCHORED
+		velocity      = Vector2.ZERO
+		_state        = State.ANCHORED
+		_shot_timer   = SHOT_COOLDOWN * 0.5
+		_anchor_timer = randf_range(ANCHOR_TIME_MIN, ANCHOR_TIME_MAX)
 	else:
 		velocity = diff.normalized() * speed
 
 # ---------------------------------------------------------------------------
-# Stationary — fire slow homing projectiles at the player
+# Anchored — fire homing projectiles; leave when anchor_timer expires
 # ---------------------------------------------------------------------------
 func _do_anchored(delta: float) -> void:
 	velocity = Vector2.ZERO
+
+	_anchor_timer -= delta
+	if _anchor_timer <= 0.0:
+		_state = State.DRIFTING
+		_pick_floor_point()
+		return
+
 	_shot_timer -= delta
 	if _shot_timer <= 0.0 and _player != null:
 		_fire_at_player()
@@ -104,33 +106,3 @@ func _fire_at_player() -> void:
 	proj.homing        = true
 	proj.homing_target = _player
 	get_parent().call_deferred("add_child", proj)
-
-func take_damage(amount: float) -> void:
-	current_health -= amount
-	_flash_timer = 0.1
-	if current_health <= 0.0:
-		_die()
-
-func _die() -> void:
-	_spawn_drop()
-	queue_free()
-
-func _spawn_drop() -> void:
-	var orb = preload("res://scenes/enemies/currency_orb.tscn").instantiate()
-	orb.position = (get_parent() as Node2D).to_local(global_position)
-	get_parent().call_deferred("add_child", orb)
-
-func _on_contact_entered(body: Node) -> void:
-	if body.is_in_group("player") and _contact_timer == 0.0:
-		body.take_damage(contact_damage)
-		_contact_timer = contact_cooldown
-
-func _tick_contact(delta: float) -> void:
-	_contact_timer = maxf(_contact_timer - delta, 0.0)
-
-func _tick_flash(delta: float) -> void:
-	if _flash_timer > 0.0:
-		_flash_timer -= delta
-		visual.modulate = Color(2.5, 2.5, 2.5)
-	else:
-		visual.modulate = Color(1.0, 1.0, 1.0)

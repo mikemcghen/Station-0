@@ -8,8 +8,11 @@ var run_active: bool = false
 var run_items: Array[Resource] = []
 var card_packs_found: Array[Resource] = []
 
-# --- Brought into the run (lost on death) ---
+# --- Credits (brought in + earned in run — lost on death, returned on success) ---
+var run_credits:      int = 0   # total spendable during this run
 var credits_brought_in: int = 0
+
+# --- Brought into the run (lost on death) ---
 var buff_items_brought: Array[Resource] = []
 var npc_ids_on_run: Array[String] = []
 
@@ -24,8 +27,10 @@ func start_run(brought_credits: int, brought_buffs: Array[Resource], brought_npc
 	run_items.clear()
 	card_packs_found.clear()
 	credits_brought_in = brought_credits
+	run_credits = brought_credits
 	buff_items_brought = brought_buffs.duplicate()
 	npc_ids_on_run = brought_npc_ids.duplicate()
+	EventBus.credits_changed.emit(run_credits)
 	EventBus.run_started.emit()
 
 func end_run(player_survived: bool) -> void:
@@ -48,12 +53,29 @@ func collect_card_pack(pack: Resource) -> void:
 	card_packs_found.append(pack)
 	EventBus.card_pack_found.emit(pack)
 
+# ---------------------------------------------------------------------------
+# Credit management — called by currency_orb and shop_item_pedestal
+# ---------------------------------------------------------------------------
+func earn_credits(amount: int) -> void:
+	run_credits += amount
+	EventBus.credits_changed.emit(run_credits)
+
+func spend_credits(amount: int) -> void:
+	run_credits = maxi(run_credits - amount, 0)
+	EventBus.credits_changed.emit(run_credits)
+
 func _apply_run_rewards() -> void:
 	# Permanent: card packs go to collection
 	for pack in card_packs_found:
 		CardCollection.open_pack(pack)
-	# Credits brought in are returned plus any earned during the run
-	UpgradeManager.hub_credits += credits_brought_in
+	# Return all remaining run credits to the player's wallet (on hand)
+	UpgradeManager.wallet_credits += run_credits
+	run_credits = 0
+	# Run items are non-permanent — clear them (body parts stay via UpgradeManager)
+	run_items.clear()
+	card_packs_found.clear()
+	# Health resets on hub return — do not carry it over
+	player_health_carry = -1.0
 	# NPCs survive
 	for npc_id in npc_ids_on_run:
 		NPCManager.return_npc_to_hub(npc_id)
@@ -62,6 +84,7 @@ func _apply_run_death() -> void:
 	# Everything brought in / found is lost
 	run_items.clear()
 	card_packs_found.clear()
+	run_credits = 0
 	credits_brought_in = 0
 	buff_items_brought.clear()
 	# NPCs on run are lost

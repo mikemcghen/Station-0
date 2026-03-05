@@ -18,6 +18,15 @@ You play as a robot aboard the last surviving human monitoring station, orbiting
 
 **The Mystery:** The player uncovers what happened to the planet and to humanity through: data floor lore cards (fragmented archival records), NPC robots with intact memories, and card flavor text across all series. The answer is WALL-E in emotional structure — humans damaged what they loved until it couldn't recover — but expressed through the lens of fantastical alien ecology and robot grief.
 
+**The Secret Creature — Late-Game Narrative Arc**
+Deep in the station, in an area the player eventually discovers, is a living creature from the old world. Humanity was conducting classified research on it — the data was never released, never archived, never shared with the monitoring robots. No NPC has ever seen it. No card exists for it. The Rogue Robot Compendium has no entry. It is completely unknown — to everyone except the shopkeeper, who heard things through the counter over thousands of years and may hint at it in their lore drops before the player ever finds it.
+
+The interaction is non-verbal. The player cannot fight it, cannot speak to it. The goal is to understand what it needs and help it reach a state of happiness — through observation, environment, and action. The specific mechanic is TBD (the creature design is undecided). The emotional logic: the player has spent the entire game learning about extinct life through cards and data. This is the first time they encounter something still alive.
+
+On completion of the arc, the creature comes to live in the hub. It joins the community of survivors — robots who remember, a shopkeeper who observed, and now one living thing from the world they've all been mourning.
+
+The player receives a **1/1 card** of the creature — the only one in existence, made by the player after the interaction. Whether to use it in a deck is entirely the player's choice. It is mechanically valid but emotionally weighted. Its flavor text is written by the player's robot, not from archival data — the first card ever created from a living encounter rather than a memory.
+
 **The Card Game (in-universe):** After humanity ended, the surviving robots developed an affinity for the life forms recorded in the station's archives. They used the data humans collected to create trading cards representing the species that lived on the planet — a game born from grief and preservation instinct. Each station zone has its own card series tied to the ecological region it monitored.
 
 ---
@@ -207,21 +216,49 @@ A rare run item. When used, it activates a homing signal that allows a lost NPC 
 
 A multi-room physical space. Feels like an abandoned station — dark, dusty, only partially functional. The player navigates between rooms on foot.
 
+**Hub layout — 7 rooms**
+```
+[ Control   ][    (empty)  ][   (empty)   ]
+[ Armory    ][   Staging   ][    Shop     ]
+[ Practice  ][  Cafeteria  ][ Trophy Room ]
+```
+Grid coordinates (col, row): Control=(-1,-1), Armory=(-1,0), Staging=(0,0), Shop=(1,0), Practice=(-1,1), Cafeteria=(0,1), Trophy=(1,1).
+Run entrance is on the **top wall** of the Staging Area (no room above it — door leads directly to run).
+
 | Room | Purpose |
 |------|---------|
-| **Control Room** | Central hub area, lore terminals with tapes, overview of station status |
-| **Armory** | Browse and equip body parts, view part stats/trade-offs |
-| **Cafeteria** | Card game tables, NPC opponents sit here when saved |
-| **Shop** | Buy cosmetics, card packs with accumulated currency |
-| **Trophy Room** | Collectibles and cosmetics unlocked during runs displayed here |
-| **Staging Area** | Final room before run entrance — equip/adjust loadout, talk to NPCs going with you |
-| **Rogue Robot Compendium** | Terminal in hub (Control Room or Trophy Room) displaying all logged corrupted robots encountered |
-| **Card Compendium** | Hub terminal displaying all cards ever seen or collected, organized by zone series |
+| **Staging Area** | Run entrance (top wall). ATM deposit machine. Talk to NPCs before a run. |
+| **Cafeteria** | Card game tables. Rescued NPC robots sit here and can be challenged. |
+| **Armory / Storage** | Equip body parts, browse acquired parts. Card storage and (later) consumable storage. Combined inventory hub. |
+| **Shop** | Buy cosmetics, card packs, curated items. **Locked until shopkeeper NPC is rescued.** Before rescue: doors open, lights off, "NO KEEPER" sign, nothing to buy. |
+| **Control Room** | Lore terminals, station status overview, Rogue Robot Compendium terminal. |
+| **Trophy Room** | Collectibles and cosmetics unlocked during runs. Card Compendium terminal. |
+| **Practice Room** | Spawn enemies from your Enemy Compendium to practice their attack patterns. Empty until at least one enemy type has been killed. |
+
+**Shopkeeper NPC**
+The shopkeeper is a found NPC — discovered in a run and rescued like any other robot. They are not present at game start.
+- Before rescue: shop room is physically accessible but non-functional. Rundown aesthetic, "NO KEEPER" sign visible.
+- After rescue: shopkeeper moves in, shop becomes fully functional.
+- Shop upgrades by bringing the shopkeeper on escort runs — standard escort risk applies (shopkeeper can be lost if the run goes badly).
+- The shopkeeper plays the card game. Their deck is commerce/trade-themed — quirky, mechanically clever, reflects that they've spent thousands of years studying the cards as items to sell rather than as creatures to appreciate. They exploit game mechanics in ways other NPCs don't. High skill ceiling opponent.
+- **Lore profile: wide but shallow.** The shopkeeper has been stationary for thousands of years running the shop — every robot in the station passed through at some point. They've overheard things, noticed what people were buying before they disappeared, watched the station decline from behind a counter. Their lore drops are ambient and observational: fragments, rumors, second-hand accounts. Interesting and often surprising, but never deep — they were never out there. They know a lot about what happened to everyone else without fully understanding what any of it meant.
+
+**Practice Room — Rogue Robot Compendium integration + Repair**
+The practice room pulls directly from the Rogue Robot Compendium. When the player kills an enemy, that type's entry populates in the Compendium (lore + original designation). That same entry makes the enemy type available to spawn in the practice room. One system, two outputs: narrative log and freeform training. No door locking, no stakes — player can exit any time.
+
+The practice room requires repair to reach full functionality:
+- **Base repair item** — found in the early game world (not a drop, a placed item). Repairing with it unlocks standard enemy simulation (Drifters, Repeaters, Anchors, and any non-boss enemies unlocked in the Compendium).
+- **Boss simulation components** — each boss has its own simulation component. Chance drop after the *first* time the player defeats that boss. Finding and installing it unlocks simulation for that specific boss. New players face bosses without practice first — the mechanic rewards experience, not preparation.
+
+**| Rogue Robot Compendium** | Terminal (Control Room). Narrative log of every corrupted robot encountered — original designation, zone assignment, what happened to them. |
+**| Card Compendium** | Terminal (Trophy Room). Every card ever seen or acquired, organized by zone series. Includes flavor text and artwork. |
 
 The hub evolves as the player progresses:
 - More lore terminals light up
 - NPCs populate the cafeteria
 - Trophy room fills in
+- Shop unlocks when shopkeeper is rescued
+- Practice room populates as enemy types are encountered
 - Certain rooms may unlock new areas as story progresses
 
 ---
@@ -547,9 +584,9 @@ signal view_switching_to_2d
 | 1 | Player: movement, shooting placeholder, modular body (stat system) |
 | 2 | Single test room: enemies, basic combat, drops |
 | 3 | Room generation: multi-room floors, door system, room types |
-| 4 | Hub world: all 6 rooms, physical navigation |
+| 4 | Hub world: all 7 rooms, physical navigation |
 | 5 | Permanent upgrade system: body parts found in runs, survive to keep |
-| 6 | Full run loop: floors, boss rooms, death, return to hub with rewards |
+| 6 | Full run loop: 3 floors, 3 bosses (Warden → Relay → Hivemind), death screen, victory screen, return to hub with rewards |
 | 7 | Combat depth: BOI-style item variety, status effects, projectile behaviors |
 | 8 | NPC system: find in runs, bring to hub, card opponents, lore dialogue |
 | 9 | Card game: rules engine, deck builder, AI opponents |

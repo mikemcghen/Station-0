@@ -9,21 +9,22 @@ const ROOM_H          := 540.0
 const TRANSITION_TIME := 0.25
 const ENTRY_INSET     := 60.0
 
-# Fixed hub layout — 6 rooms arranged as:
+# Fixed hub layout — 7 rooms arranged as:
 #
-#        [Control (0,-1)]
-#               |
-#  [Cafe(-1,0)]-[Staging(0,0)]-[Armory(1,0)]
-#               |                    |
-#           [Shop(0,1)]----[Trophy(1,1)]
+#  [Control(-1,-1)]
+#         |
+#  [Armory(-1,0)]-[Staging(0,0)]-[Shop(1,0)]
+#         |               |              |
+#  [Practice(-1,1)]-[Cafeteria(0,1)]-[Trophy(1,1)]
 #
-# HubRoomType: STAGING=0, ARMORY=1, CAFETERIA=2, SHOP=3, CONTROL_ROOM=4, TROPHY_ROOM=5
+# HubRoomType: STAGING=0, ARMORY=1, CAFETERIA=2, SHOP=3, CONTROL_ROOM=4, TROPHY_ROOM=5, PRACTICE=6
 const LAYOUT := [
 	{"type": 0, "grid": Vector2i( 0,  0)},   # STAGING
-	{"type": 4, "grid": Vector2i( 0, -1)},   # CONTROL_ROOM
-	{"type": 2, "grid": Vector2i(-1,  0)},   # CAFETERIA
-	{"type": 1, "grid": Vector2i( 1,  0)},   # ARMORY
-	{"type": 3, "grid": Vector2i( 0,  1)},   # SHOP
+	{"type": 4, "grid": Vector2i(-1, -1)},   # CONTROL_ROOM
+	{"type": 1, "grid": Vector2i(-1,  0)},   # ARMORY
+	{"type": 3, "grid": Vector2i( 1,  0)},   # SHOP
+	{"type": 6, "grid": Vector2i(-1,  1)},   # PRACTICE
+	{"type": 2, "grid": Vector2i( 0,  1)},   # CAFETERIA
 	{"type": 5, "grid": Vector2i( 1,  1)},   # TROPHY_ROOM
 ]
 
@@ -41,6 +42,7 @@ const DIRS := {
 @onready var camera:          Camera2D    = $Camera2D
 @onready var player:          Node2D      = $Player
 @onready var armory_ui:       CanvasLayer = $ArmoryUI
+@onready var atm_ui:          CanvasLayer = $AtmUI
 
 # ---------------------------------------------------------------------------
 # State
@@ -131,3 +133,6 @@ func _grid_to_world(grid_pos: Vector2i) -> Vector2:
 # ---------------------------------------------------------------------------
 func open_armory() -> void:
 	armory_ui.open()
+
+func open_atm() -> void:
+	atm_ui.open()

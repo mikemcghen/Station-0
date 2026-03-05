@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RunItem" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/run_item.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Rust Coat"
+description = "Reduce all incoming damage by 1 (minimum 1)."
+effect = 8
+damage_reduction = 1.0

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BodyPartData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/upgrades/body_part_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+slot = "left_arm"
+display_name = "Scatter Emitter"
+mod_scatter_count = 3
+mod_scatter_spread_deg = 30.0
+mod_damage = -1.4

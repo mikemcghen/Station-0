@@ -164,4 +164,5 @@ func _equip_selected() -> void:
 		return
 	var part: BodyPartData = _items[_cursor]
 	UpgradeManager.equip_part(part)
+	SaveManager.save()
 	_refresh_labels()
