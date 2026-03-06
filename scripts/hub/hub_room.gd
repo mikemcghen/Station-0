@@ -345,7 +345,7 @@ func _build_atm() -> void:
 # Input — E to interact
 # ---------------------------------------------------------------------------
 func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed("ui_accept"):
+	if not (event is InputEventKey and event.keycode == KEY_E and event.pressed and not event.echo):
 		return
 	if _player_at_portal:
 		GameManager.call_deferred("start_run")
