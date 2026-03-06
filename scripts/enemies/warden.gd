@@ -15,21 +15,21 @@ const ROOM_HW        := 480.0
 const ROOM_HH        := 270.0
 const WALL_T         := 32.0
 
-const ORBIT_SPEED_P1 := 0.96    # rad/sec ≈ 55 deg/sec
-const ORBIT_SPEED_P2 := 1.40    # rad/sec ≈ 80 deg/sec
+const ORBIT_SPEED_P1 := 0.55    # rad/sec ≈ 31 deg/sec
+const ORBIT_SPEED_P2 := 0.85    # rad/sec ≈ 49 deg/sec
 
-const TELEGRAPH_TIME := 0.6
-const PASS_DELAY     := 0.9
+const TELEGRAPH_TIME := 0.8
+const PASS_DELAY     := 1.2
 
-const SWEEP_SPEED_P1 := 80.0
-const SWEEP_SPEED_P2 := 130.0
-const SWEEP_CD_P1    := 5.0
-const SWEEP_CD_P2    := 3.5
+const SWEEP_SPEED_P1 := 50.0
+const SWEEP_SPEED_P2 := 85.0
+const SWEEP_CD_P1    := 6.5
+const SWEEP_CD_P2    := 4.5
 const PROJ_SPACING   := 18.0
 const GAP_W          := 90.0
 
-const MINE_CD_P1     := 4.0
-const MINE_CD_P2     := 2.5
+const MINE_CD_P1     := 5.5
+const MINE_CD_P2     := 3.5
 const MINE_RADIUS    := 22.0
 const MINE_CAP       := 10
 
@@ -160,8 +160,8 @@ func _fire_sweep_pass() -> void:
 	_passes_fired    += 1
 	_pass_delay_timer = PASS_DELAY
 
-	var speed       := SWEEP_SPEED_P2 if _phase == Phase.TWO else SWEEP_SPEED_P1
-	var move_vel    := Vector2(0.0, speed * _sweep_dir)
+	var proj_speed  := SWEEP_SPEED_P2 if _phase == Phase.TWO else SWEEP_SPEED_P1
+	var move_vel    := Vector2(0.0, proj_speed * _sweep_dir)
 	var inner_left  := -ROOM_HW + WALL_T
 	var inner_right :=  ROOM_HW - WALL_T
 	var room_w      := inner_right - inner_left
@@ -223,7 +223,7 @@ func _tick_sweep_projs(delta: float) -> void:
 	var i := _sweep_projs.size() - 1
 	while i >= 0:
 		var entry: Dictionary = _sweep_projs[i]
-		var node: Node2D      = entry["node"]
+		var node              = entry["node"]   # untyped — prevents crash on freed instance
 		if not is_instance_valid(node):
 			_sweep_projs.remove_at(i)
 			i -= 1
