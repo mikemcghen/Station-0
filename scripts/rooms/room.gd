@@ -19,6 +19,7 @@ const DRIFTER_SCENE     = preload("res://scenes/enemies/drifter.tscn")
 const REPEATER_SCENE    = preload("res://scenes/enemies/repeater.tscn")
 const ANCHOR_SCENE      = preload("res://scenes/enemies/anchor.tscn")
 const SUPERVISOR_SCENE  = preload("res://scenes/enemies/supervisor.tscn")
+const WARDEN_SCENE      = preload("res://scenes/enemies/warden.tscn")
 const BODY_PART_PICKUP  = preload("res://scenes/upgrades/body_part_pickup.tscn")
 const RUN_ITEM_PICKUP   = preload("res://scenes/items/run_item_pickup.tscn")
 const SHOP_PEDESTAL_SCR = preload("res://scripts/items/shop_item_pedestal.gd")
@@ -261,7 +262,8 @@ func _spawn_enemies() -> void:
 
 
 func _spawn_boss() -> void:
-	var boss = SUPERVISOR_SCENE.instantiate()
+	var scene = WARDEN_SCENE if RunManager.current_floor == 1 else SUPERVISOR_SCENE
+	var boss  = scene.instantiate()
 	contents.add_child(boss)
 	boss.global_position = to_global(Vector2.ZERO)   # room centre
 	boss.tree_exited.connect(_on_enemy_died, CONNECT_DEFERRED)
@@ -281,6 +283,8 @@ func _on_enemy_died() -> void:
 
 
 func _spawn_floor_exit() -> void:
+	var is_final_floor := RunManager.current_floor >= 3
+
 	# Visual — bright teal portal offset from body part drop (which is at center)
 	var poly     := Polygon2D.new()
 	poly.polygon  = PackedVector2Array([-35, -50, 35, -50, 35, 50, -35, 50])
@@ -289,7 +293,7 @@ func _spawn_floor_exit() -> void:
 	contents.add_child(poly)
 
 	var lbl      := Label.new()
-	lbl.text     = "NEXT FLOOR"
+	lbl.text     = "EXTRACT" if is_final_floor else "NEXT FLOOR"
 	lbl.position = Vector2(85, -75)
 	contents.add_child(lbl)
 
@@ -307,8 +311,11 @@ func _spawn_floor_exit() -> void:
 	area.body_entered.connect(func(body: Node) -> void:
 		if body.is_in_group("player"):
 			RunManager.player_health_carry = body.stats.current_health
-			RunManager.advance_floor()
-			get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn"))
+			if RunManager.current_floor >= 3:
+				RunManager.end_run(true)
+			else:
+				RunManager.advance_floor()
+				get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn"))
 	contents.add_child(area)
 
 
