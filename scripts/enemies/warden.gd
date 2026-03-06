@@ -28,10 +28,12 @@ const SWEEP_CD_P2    := 4.5
 const PROJ_SPACING   := 18.0
 const GAP_W          := 90.0
 
-const MINE_CD_P1     := 5.5
-const MINE_CD_P2     := 3.5
-const MINE_RADIUS    := 22.0
-const MINE_CAP       := 10
+const MINE_CD_P1     := 4.0
+const MINE_CD_P2     := 2.5
+const MINE_RADIUS    := 18.0
+const MINE_ARM_TIME  := 1.0
+const MINE_LIFE_TIME := 3.0
+const MINE_AOE       := 50.0
 
 const FREEZE_DURATION := 1.5
 
@@ -53,9 +55,9 @@ var _pass_delay_timer: float = 0.0
 var _sweep_dir:        float = 1.0   # 1 = downward, -1 = upward
 var _sweep_projs:      Array = []    # [{node: Node2D, vel: Vector2}]
 
-# Mines
+# Mines — each entry: {node: Node2D, timer: float, armed: bool, poly: Polygon2D}
 var _mine_cd_timer: float = MINE_CD_P1
-var _mines:         Array = []       # [Node2D]
+var _mines:         Array = []
 
 # Climax
 var _freeze_timer: float = 0.0
@@ -235,55 +237,97 @@ func _tick_sweep_projs(delta: float) -> void:
 		i -= 1
 
 # ---------------------------------------------------------------------------
-# Mine Drop — stationary proximity mine at current orbit position
+# Timed Mines — drop at orbit position, arm after 1s, explode at 3s with AOE
 # ---------------------------------------------------------------------------
 func _tick_mines(delta: float) -> void:
-	# Prune freed references
-	_mines = _mines.filter(func(m: Node) -> bool: return is_instance_valid(m))
-
+	# Spawn new mines on cooldown
 	_mine_cd_timer -= delta
 	if _mine_cd_timer <= 0.0:
 		_mine_cd_timer = MINE_CD_P2 if _phase == Phase.TWO else MINE_CD_P1
-		if _mines.size() < MINE_CAP:
-			_spawn_mine(global_position)
+		_spawn_mine(global_position)
+
+	# Update each mine's lifecycle
+	var i := _mines.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _mines[i]
+		var node: Node2D      = entry["node"]
+		if not is_instance_valid(node):
+			_mines.remove_at(i)
+			i -= 1
+			continue
+
+		entry["timer"] += delta
+
+		# Arm at 1 second — start pulsing red
+		if not entry["armed"] and entry["timer"] >= MINE_ARM_TIME:
+			entry["armed"] = true
+
+		# Armed visual pulse
+		if entry["armed"]:
+			var poly: Polygon2D = entry["poly"]
+			var pulse := fmod(entry["timer"], 0.25) < 0.125
+			poly.color = Color(1.0, 0.15, 0.1, 0.95) if pulse else Color(0.6, 0.08, 0.05, 0.9)
+
+		# Explode at 3 seconds
+		if entry["timer"] >= MINE_LIFE_TIME:
+			_explode_mine(entry)
+			_mines.remove_at(i)
+
+		i -= 1
 
 
 func _spawn_mine(world_pos: Vector2) -> void:
 	var mine := Node2D.new()
 
-	# Visual — dark red polygon circle
+	# Visual — dim dark red polygon circle (not armed yet)
 	var poly := Polygon2D.new()
 	var pts  := PackedVector2Array()
-	for i in 12:
-		var a := TAU * i / 12.0
+	for j in 12:
+		var a := TAU * j / 12.0
 		pts.append(Vector2(cos(a), sin(a)) * MINE_RADIUS)
 	poly.polygon = pts
-	poly.color   = Color(0.55, 0.05, 0.05, 0.9)
+	poly.color   = Color(0.35, 0.05, 0.05, 0.7)   # dim until armed
 	mine.add_child(poly)
-
-	var area   := Area2D.new()
-	area.collision_layer = 0
-	area.collision_mask  = 2
-	var cs     := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = MINE_RADIUS
-	cs.shape      = circle
-	area.add_child(cs)
-	area.body_entered.connect(func(body: Node) -> void:
-		if body.is_in_group("player"):
-			body.take_damage(1.0)
-			mine.queue_free())
-	mine.add_child(area)
 
 	get_parent().add_child(mine)
 	mine.global_position = world_pos
-	_mines.append(mine)
+	_mines.append({"node": mine, "timer": 0.0, "armed": false, "poly": poly})
+
+
+func _explode_mine(entry: Dictionary) -> void:
+	var node: Node2D = entry["node"]
+	if not is_instance_valid(node):
+		return
+
+	# Check if player is within AOE
+	if _player != null and is_instance_valid(_player):
+		var dist := node.global_position.distance_to(_player.global_position)
+		if dist <= MINE_AOE:
+			_player.take_damage(1.0)
+
+	# Brief visual flash for explosion (optional: could add particle later)
+	var flash := Polygon2D.new()
+	var pts   := PackedVector2Array()
+	for j in 16:
+		var a := TAU * j / 16.0
+		pts.append(Vector2(cos(a), sin(a)) * MINE_AOE)
+	flash.polygon = pts
+	flash.color   = Color(1.0, 0.4, 0.1, 0.6)
+	flash.global_position = node.global_position
+	get_parent().add_child(flash)
+
+	# Remove flash after short delay
+	var tw := get_tree().create_tween()
+	tw.tween_property(flash, "modulate:a", 0.0, 0.15)
+	tw.tween_callback(flash.queue_free)
+
+	node.queue_free()
 
 
 func _clear_mines() -> void:
-	for mine in _mines:
-		if is_instance_valid(mine):
-			mine.queue_free()
+	for entry in _mines:
+		if is_instance_valid(entry["node"]):
+			entry["node"].queue_free()
 	_mines.clear()
 
 # ---------------------------------------------------------------------------
