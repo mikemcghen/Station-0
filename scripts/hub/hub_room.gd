@@ -53,6 +53,13 @@ var _connections: Dictionary = {}  # "up"/"down"/"left"/"right" -> Vector2i
 var _hub:         Node       = null
 var _doors:       Dictionary = {}  # direction -> Area2D
 
+var _player_at_armory: bool  = false
+var _player_at_portal: bool  = false
+var _player_at_atm:    bool  = false
+var _armory_prompt:    Label = null
+var _portal_prompt:    Label = null
+var _atm_prompt:       Label = null
+
 # ---------------------------------------------------------------------------
 # Node refs
 # ---------------------------------------------------------------------------
@@ -213,6 +220,12 @@ func _build_armory_workbench() -> void:
 	lbl.position = Vector2(-30, -140)
 	contents.add_child(lbl)
 
+	_armory_prompt          = Label.new()
+	_armory_prompt.text     = "[E] Open"
+	_armory_prompt.position = Vector2(-30, -155)
+	_armory_prompt.visible  = false
+	contents.add_child(_armory_prompt)
+
 	var area := Area2D.new()
 	area.collision_layer = 0
 	area.collision_mask  = 2
@@ -226,7 +239,12 @@ func _build_armory_workbench() -> void:
 
 	area.body_entered.connect(func(b: Node) -> void:
 		if b.is_in_group("player"):
-			_hub.call_deferred("open_armory"))
+			_player_at_armory = true
+			_armory_prompt.visible = true)
+	area.body_exited.connect(func(b: Node) -> void:
+		if b.is_in_group("player"):
+			_player_at_armory = false
+			_armory_prompt.visible = false)
 	contents.add_child(area)
 
 # ---------------------------------------------------------------------------
@@ -246,6 +264,12 @@ func _build_run_portal() -> void:
 	lbl.position = Vector2(-36, -195)
 	contents.add_child(lbl)
 
+	_portal_prompt          = Label.new()
+	_portal_prompt.text     = "[E] Start Run"
+	_portal_prompt.position = Vector2(-50, -210)
+	_portal_prompt.visible  = false
+	contents.add_child(_portal_prompt)
+
 	# Trigger zone
 	var area := Area2D.new()
 	area.collision_layer = 0
@@ -260,7 +284,12 @@ func _build_run_portal() -> void:
 
 	area.body_entered.connect(func(b: Node) -> void:
 		if b.is_in_group("player"):
-			GameManager.call_deferred("start_run"))
+			_player_at_portal = true
+			_portal_prompt.visible = true)
+	area.body_exited.connect(func(b: Node) -> void:
+		if b.is_in_group("player"):
+			_player_at_portal = false
+			_portal_prompt.visible = false)
 	contents.add_child(area)
 
 # ---------------------------------------------------------------------------
@@ -285,6 +314,12 @@ func _build_atm() -> void:
 	lbl.position = Vector2(172, -202)
 	contents.add_child(lbl)
 
+	_atm_prompt          = Label.new()
+	_atm_prompt.text     = "[E] Deposit"
+	_atm_prompt.position = Vector2(162, -215)
+	_atm_prompt.visible  = false
+	contents.add_child(_atm_prompt)
+
 	var area := Area2D.new()
 	area.collision_layer = 0
 	area.collision_mask  = 2
@@ -298,8 +333,26 @@ func _build_atm() -> void:
 
 	area.body_entered.connect(func(b: Node) -> void:
 		if b.is_in_group("player"):
-			_hub.call_deferred("open_atm"))
+			_player_at_atm = true
+			_atm_prompt.visible = true)
+	area.body_exited.connect(func(b: Node) -> void:
+		if b.is_in_group("player"):
+			_player_at_atm = false
+			_atm_prompt.visible = false)
 	contents.add_child(area)
+
+# ---------------------------------------------------------------------------
+# Input — E to interact
+# ---------------------------------------------------------------------------
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_accept"):
+		return
+	if _player_at_portal:
+		GameManager.call_deferred("start_run")
+	elif _player_at_armory:
+		_hub.call_deferred("open_armory")
+	elif _player_at_atm:
+		_hub.call_deferred("open_atm")
 
 # ---------------------------------------------------------------------------
 # Practice room — placeholder until VS combat is implemented
