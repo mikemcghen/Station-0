@@ -21,9 +21,10 @@ var _overclock_counter: int = 0
 var _memory_spike_available: bool = true
 
 # Shield Projector — active block, absorbs one hit
-var _shield_ready:    bool  = true
-var _shield_active:   bool  = false
-var _shield_cd_timer: float = 0.0
+var _shield_ready:       bool  = true
+var _shield_active:      bool  = false
+var _shield_cd_timer:    float = 0.0
+var _shield_flash_timer: float = 0.0   # brief white flash on absorb
 
 # Oil slick — count of slick zones currently overlapping player
 var _slick_count: int = 0
@@ -145,12 +146,29 @@ func _handle_shield(delta: float) -> void:
 # Iframes — flash body during invincibility
 # ---------------------------------------------------------------------------
 func _handle_iframes(delta: float) -> void:
-	if _iframe_timer <= 0.0:
+	# Iframes — highest priority, flashes white/transparent
+	if _iframe_timer > 0.0:
+		_iframe_timer -= delta
+		body.modulate = Color(1, 1, 1, 0.25) if fmod(_iframe_timer, 0.2) < 0.1 else Color(1, 1, 1, 1)
+		return
+
+	# Shield absorbed flash — bright white for a moment
+	if _shield_flash_timer > 0.0:
+		_shield_flash_timer -= delta
 		body.modulate = Color(1, 1, 1, 1)
 		return
-	_iframe_timer -= delta
-	# Visible flash every 0.1s
-	body.modulate = Color(1, 1, 1, 0.25) if fmod(_iframe_timer, 0.2) < 0.1 else Color(1, 1, 1, 1)
+
+	# Shield active — cyan tint
+	if _shield_active:
+		body.modulate = Color(0.4, 0.9, 1.0)
+		return
+
+	# Shield on cooldown — dim grey
+	if _shield_cd_timer > 0.0:
+		body.modulate = Color(0.55, 0.55, 0.65)
+		return
+
+	body.modulate = Color(1, 1, 1, 1)
 
 # ---------------------------------------------------------------------------
 # Damage / death
@@ -161,9 +179,10 @@ func take_damage(amount: float) -> void:
 
 	# Shield Projector — absorb one hit
 	if _shield_active:
-		_shield_active   = false
-		_shield_ready    = false
-		_shield_cd_timer = SHIELD_COOLDOWN
+		_shield_active       = false
+		_shield_ready        = false
+		_shield_cd_timer     = SHIELD_COOLDOWN
+		_shield_flash_timer  = 0.15
 		return
 
 	# Rust Coat — reduce damage (min 1)
