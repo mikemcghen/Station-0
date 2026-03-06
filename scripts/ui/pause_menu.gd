@@ -68,6 +68,7 @@ func _on_resume() -> void:
 	get_tree().paused = false
 
 func _on_return_to_hub() -> void:
+	visible = false
 	get_tree().paused = false
 	RunManager.end_run(true)
 

@@ -98,3 +98,4 @@ func _fade_out_then_hub() -> void:
 	var tw := create_tween()
 	tw.tween_property(_bg, "modulate:a", 0.0, FADE_OUT_TIME)
 	tw.tween_callback(Callable(GameManager, "go_to_hub"))
+	tw.tween_callback(Callable(self, "queue_free"))
