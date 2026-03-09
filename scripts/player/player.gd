@@ -204,7 +204,11 @@ func take_damage(amount: float) -> void:
 		_die()
 
 func _die() -> void:
-	RunManager.end_run(false)
+	if RunManager.run_active:
+		RunManager.end_run(false)
+	else:
+		# In hub/practice — just heal to full instead of dying
+		stats.heal(stats.max_health)
 
 # ---------------------------------------------------------------------------
 # Static Discharge — instant AoE damage to enemies in radius

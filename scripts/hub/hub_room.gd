@@ -60,6 +60,13 @@ var _armory_prompt:    Label = null
 var _portal_prompt:    Label = null
 var _atm_prompt:       Label = null
 
+# Practice room state
+var _player_at_boss_terminal: int = -1   # -1 = none, 0 = Warden, 1 = Relay, 2 = Supervisor
+var _boss_prompts: Array[Label] = []
+var _practice_boss: Node2D = null
+var _practice_active: bool = false
+var _reset_prompt: Label = null
+
 # ---------------------------------------------------------------------------
 # Node refs
 # ---------------------------------------------------------------------------
@@ -353,12 +360,143 @@ func _unhandled_input(event: InputEvent) -> void:
 		_hub.call_deferred("open_armory")
 	elif _player_at_atm:
 		_hub.call_deferred("open_atm")
+	elif _player_at_boss_terminal >= 0:
+		_spawn_practice_boss(_player_at_boss_terminal)
+	elif _practice_active and _reset_prompt != null and _reset_prompt.visible:
+		_reset_practice()
 
 # ---------------------------------------------------------------------------
-# Practice room — placeholder until VS combat is implemented
+# Practice room — boss training arena
 # ---------------------------------------------------------------------------
+const WARDEN_SCENE     = preload("res://scenes/enemies/warden.tscn")
+const RELAY_SCENE      = preload("res://scenes/enemies/relay.tscn")
+const SUPERVISOR_SCENE = preload("res://scenes/enemies/supervisor.tscn")
+
+const BOSS_NAMES := ["WARDEN", "RELAY", "SUPERVISOR"]
+const BOSS_COLORS := [
+	Color(0.6, 0.35, 0.2),   # Warden — rust
+	Color(0.15, 0.55, 0.65), # Relay — teal
+	Color(0.7, 0.2, 0.2),    # Supervisor — red
+]
+
 func _build_practice_room() -> void:
-	var lbl      := Label.new()
-	lbl.text     = "PRACTICE ROOM — OFFLINE"
-	lbl.position = Vector2(-90, -20)
-	contents.add_child(lbl)
+	# Title
+	var title      := Label.new()
+	title.text     = "BOSS PRACTICE"
+	title.position = Vector2(-55, -230)
+	contents.add_child(title)
+
+	# Instructions
+	var inst      := Label.new()
+	inst.text     = "Select a boss to begin training"
+	inst.position = Vector2(-110, -210)
+	contents.add_child(inst)
+
+	# Three boss terminals arranged horizontally
+	var terminal_positions := [
+		Vector2(-200, -100),  # Warden
+		Vector2(0, -100),     # Relay
+		Vector2(200, -100),   # Supervisor
+	]
+
+	for i in 3:
+		_create_boss_terminal(i, terminal_positions[i])
+
+	# Reset prompt (hidden until practice active)
+	_reset_prompt          = Label.new()
+	_reset_prompt.text     = "[E] Reset Practice"
+	_reset_prompt.position = Vector2(-70, 200)
+	_reset_prompt.visible  = false
+	contents.add_child(_reset_prompt)
+
+func _create_boss_terminal(boss_idx: int, pos: Vector2) -> void:
+	# Terminal visual — colored rectangle
+	var poly      := Polygon2D.new()
+	poly.polygon   = PackedVector2Array([-35, -25, 35, -25, 35, 25, -35, 25])
+	poly.color     = BOSS_COLORS[boss_idx]
+	poly.position  = pos
+	contents.add_child(poly)
+
+	# Boss name label
+	var name_lbl      := Label.new()
+	name_lbl.text     = BOSS_NAMES[boss_idx]
+	name_lbl.position = pos + Vector2(-30, -50)
+	contents.add_child(name_lbl)
+
+	# Prompt label
+	var prompt      := Label.new()
+	prompt.text     = "[E] Fight " + BOSS_NAMES[boss_idx]
+	prompt.position = pos + Vector2(-50, 35)
+	prompt.visible  = false
+	contents.add_child(prompt)
+	_boss_prompts.append(prompt)
+
+	# Trigger area
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask  = 2
+
+	var cs := CollisionShape2D.new()
+	var rs := RectangleShape2D.new()
+	rs.size  = Vector2(80, 60)
+	cs.shape = rs
+	area.add_child(cs)
+	area.position = pos
+
+	area.body_entered.connect(func(b: Node) -> void:
+		if b.is_in_group("player") and not _practice_active:
+			_player_at_boss_terminal = boss_idx
+			prompt.visible = true)
+	area.body_exited.connect(func(b: Node) -> void:
+		if b.is_in_group("player") and _player_at_boss_terminal == boss_idx:
+			_player_at_boss_terminal = -1
+			prompt.visible = false)
+	contents.add_child(area)
+
+func _spawn_practice_boss(boss_idx: int) -> void:
+	if _practice_active:
+		return
+
+	_practice_active = true
+
+	# Hide all terminal prompts
+	for p in _boss_prompts:
+		p.visible = false
+	_player_at_boss_terminal = -1
+
+	# Spawn the boss
+	var scene: PackedScene
+	match boss_idx:
+		0: scene = WARDEN_SCENE
+		1: scene = RELAY_SCENE
+		_: scene = SUPERVISOR_SCENE
+
+	_practice_boss = scene.instantiate()
+	contents.add_child(_practice_boss)
+	_practice_boss.global_position = global_position + Vector2(0, 50)
+
+	# Connect boss death to reset
+	_practice_boss.tree_exited.connect(_on_practice_boss_died, CONNECT_DEFERRED)
+
+	# Show reset prompt
+	_reset_prompt.visible = true
+
+func _on_practice_boss_died() -> void:
+	_practice_boss = null
+	# Keep reset prompt visible so player can spawn another
+
+func _reset_practice() -> void:
+	# Kill current boss if alive
+	if _practice_boss != null and is_instance_valid(_practice_boss):
+		_practice_boss.queue_free()
+		_practice_boss = null
+
+	_practice_active = false
+	_reset_prompt.visible = false
+
+	# Heal player
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null:
+		var stats = player.get_node_or_null("Stats")
+		if stats != null and stats.has_method("heal"):
+			stats.heal(999)
