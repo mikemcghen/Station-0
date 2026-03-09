@@ -491,6 +491,19 @@ func _reset_practice() -> void:
 		_practice_boss.queue_free()
 		_practice_boss = null
 
+	# Clear all enemies (drifters spawned by Relay, etc.)
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+
+	# Clear any projectiles/nodes in contents that aren't permanent
+	for child in contents.get_children():
+		# Keep labels, polygons, and areas (the UI elements)
+		if child is Label or child is Polygon2D or child is Area2D:
+			continue
+		# Remove everything else (projectiles, spawned enemies, etc.)
+		child.queue_free()
+
 	_practice_active = false
 	_reset_prompt.visible = false
 

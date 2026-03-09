@@ -50,9 +50,8 @@ var _visual          : Node2D
 var _contact_area    : Area2D
 
 var _teleport_timer  : float = 3.0   # initial delay before first teleport
-var _in_transit      : bool = false
 var _transit_timer   : float = 0.0
-var _fade_out        : bool = false
+var _fade_timer      : float = 0.0
 
 var _teleport_count  : int = 0
 var _next_drifter_threshold : int = 0
@@ -94,35 +93,37 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 # ---------------------------------------------------------------------------
-# Teleport cycle
+# Teleport cycle (fully timer-based, no tween callbacks)
 # ---------------------------------------------------------------------------
+enum TeleportState { IDLE, FADING_OUT, IN_TRANSIT }
+var _tp_state: int = TeleportState.IDLE
+
 func _tick_teleport(delta: float) -> void:
-	if _in_transit:
-		_transit_timer -= delta
-		if _transit_timer <= 0.0:
-			_reappear()
-		return
+	match _tp_state:
+		TeleportState.IDLE:
+			_teleport_timer -= delta
+			if _teleport_timer <= 0.0:
+				_start_fade_out()
+		TeleportState.FADING_OUT:
+			_fade_timer -= delta
+			_visual.modulate.a = _fade_timer / FADE_OUT_TIME
+			if _fade_timer <= 0.0:
+				_enter_transit()
+		TeleportState.IN_TRANSIT:
+			_transit_timer -= delta
+			if _transit_timer <= 0.0:
+				_reappear()
 
-	_teleport_timer -= delta
-	if _teleport_timer <= 0.0:
-		_start_teleport()
+func _start_fade_out() -> void:
+	_tp_state = TeleportState.FADING_OUT
+	_fade_timer = FADE_OUT_TIME
 
-func _start_teleport() -> void:
-	_in_transit = true
-	_fade_out = true
-
-	# Quick fade out
-	var tw := create_tween()
-	tw.tween_property(_visual, "modulate:a", 0.0, FADE_OUT_TIME)
-	tw.finished.connect(_on_fade_finished)
-
-func _on_fade_finished() -> void:
-	if not _fade_out:
-		return
-	_fade_out = false
+func _enter_transit() -> void:
+	_tp_state = TeleportState.IN_TRANSIT
 	_contact_area.monitoring = false
 	_contact_area.monitorable = false
 	_visual.visible = false
+	_visual.modulate.a = 0.0
 	_transit_timer = TRANSIT_TIME
 
 func _reappear() -> void:
@@ -147,7 +148,7 @@ func _reappear() -> void:
 	var base_color := Color(0.3, 0.8, 1.0) if _phase == Phase.TWO else Color(1, 1, 1, 1)
 	tw.tween_property(_visual, "modulate", base_color, 0.15)
 
-	_in_transit = false
+	_tp_state = TeleportState.IDLE
 	_teleport_count += 1
 
 	# Fire burst
@@ -255,7 +256,7 @@ func _spawn_drifters() -> void:
 # Damage / Phase
 # ---------------------------------------------------------------------------
 func take_damage(amount: float) -> void:
-	if _in_transit or _phase == Phase.CLIMAX:
+	if _tp_state != TeleportState.IDLE or _phase == Phase.CLIMAX:
 		return
 
 	current_health -= amount

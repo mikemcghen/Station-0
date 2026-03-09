@@ -21,6 +21,7 @@ const ANCHOR_SCENE      = preload("res://scenes/enemies/anchor.tscn")
 const SUPERVISOR_SCENE  = preload("res://scenes/enemies/supervisor.tscn")
 const WARDEN_SCENE      = preload("res://scenes/enemies/warden.tscn")
 const RELAY_SCENE       = preload("res://scenes/enemies/relay.tscn")
+const HIVEMIND_SCENE    = preload("res://scenes/enemies/hivemind.tscn")
 const BODY_PART_PICKUP  = preload("res://scenes/upgrades/body_part_pickup.tscn")
 const RUN_ITEM_PICKUP   = preload("res://scenes/items/run_item_pickup.tscn")
 const SHOP_PEDESTAL_SCR = preload("res://scripts/items/shop_item_pedestal.gd")
@@ -267,7 +268,7 @@ func _spawn_boss() -> void:
 	match RunManager.current_floor:
 		1: scene = WARDEN_SCENE
 		2: scene = RELAY_SCENE
-		_: scene = SUPERVISOR_SCENE
+		_: scene = HIVEMIND_SCENE
 	var boss  = scene.instantiate()
 	contents.add_child(boss)
 	boss.global_position = to_global(Vector2.ZERO)   # room centre
