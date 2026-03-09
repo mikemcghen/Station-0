@@ -79,10 +79,13 @@ func _ready() -> void:
 # Physics loop
 # ---------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	_find_player()
 	_tick_contact(delta)
 	_tick_flash(delta)
 	_tick_sweep_projs(delta)
+	if not is_active():
+		return
 
 	if _phase == Phase.ONE and current_health / max_health <= 0.4:
 		_enter_phase_two()

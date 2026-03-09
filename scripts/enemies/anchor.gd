@@ -26,8 +26,8 @@ var _shot_timer:   float   = 1.0
 var _anchor_timer: float   = 0.0
 
 func _ready() -> void:
-	max_health     = 40.0
-	current_health = 40.0
+	max_health     = 30.0
+	current_health = 30.0
 	speed          = 95.0
 	contact_damage = 0.5
 	super._ready()
@@ -43,10 +43,13 @@ func _pick_floor_point() -> void:
 	_target_pos = room_center + Vector2(rx, ry)
 
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	_find_player()
 	_tick_contact(delta)
 	_tick_flash(delta)
 	_tick_slow(delta)
+	if not is_active():
+		return
 
 	match _state:
 		State.DRIFTING:

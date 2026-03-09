@@ -17,10 +17,13 @@ func _ready() -> void:
 	_wobble_phase = randf() * TAU
 
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	_find_player()
 	_tick_contact(delta)
 	_tick_flash(delta)
 	_tick_slow(delta)
+	if not is_active():
+		return
 	_do_arc_chase(delta)
 	velocity *= _slow_factor
 	move_and_slide()

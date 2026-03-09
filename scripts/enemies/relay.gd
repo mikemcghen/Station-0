@@ -51,6 +51,8 @@ var _contact_area    : Area2D
 
 var _teleport_timer  : float = 3.0   # initial delay before first teleport
 var _in_transit      : bool = false
+var _transit_timer   : float = 0.0
+var _fade_out        : bool = false
 
 var _teleport_count  : int = 0
 var _next_drifter_threshold : int = 0
@@ -75,11 +77,14 @@ func _ready() -> void:
 
 	_room_center = global_position
 	_roll_drifter_threshold()
-	_roll_teleport_cooldown()
+	_teleport_timer = 2.5   # initial delay before first teleport
 
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	if _phase == Phase.CLIMAX:
 		_tick_climax(delta)
+		return
+	if not is_active():
 		return
 
 	_tick_teleport(delta)
@@ -93,6 +98,9 @@ func _physics_process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 func _tick_teleport(delta: float) -> void:
 	if _in_transit:
+		_transit_timer -= delta
+		if _transit_timer <= 0.0:
+			_reappear()
 		return
 
 	_teleport_timer -= delta
@@ -101,21 +109,21 @@ func _tick_teleport(delta: float) -> void:
 
 func _start_teleport() -> void:
 	_in_transit = true
+	_fade_out = true
 
-	# Fade out
+	# Quick fade out
 	var tw := create_tween()
 	tw.tween_property(_visual, "modulate:a", 0.0, FADE_OUT_TIME)
-	tw.tween_callback(Callable(self, "_on_fade_out_done"))
+	tw.finished.connect(_on_fade_finished)
 
-func _on_fade_out_done() -> void:
+func _on_fade_finished() -> void:
+	if not _fade_out:
+		return
+	_fade_out = false
 	_contact_area.monitoring = false
 	_contact_area.monitorable = false
 	_visual.visible = false
-
-	# Transit delay then reappear
-	var tw := create_tween()
-	tw.tween_interval(TRANSIT_TIME)
-	tw.tween_callback(Callable(self, "_reappear"))
+	_transit_timer = TRANSIT_TIME
 
 func _reappear() -> void:
 	# Pick random position within room bounds

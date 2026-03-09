@@ -110,10 +110,13 @@ func _update_facing(dir: Vector2) -> void:
 # Physics loop
 # ---------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	_find_player()
 	_tick_contact(delta)
 	_tick_beam(delta)
 	_tick_flash(delta)
+	if not is_active():
+		return
 
 	var pct := current_health / max_health
 	if _phase == Phase.ONE and pct <= 0.55:

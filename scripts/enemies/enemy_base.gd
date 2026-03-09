@@ -13,10 +13,13 @@ var contact_cooldown: float = 0.8
 # ---------------------------------------------------------------------------
 # Internal state — shared across all enemies
 # ---------------------------------------------------------------------------
+const SPAWN_DELAY: float = 0.5
+
 var _contact_timer: float  = 0.0
 var _flash_timer:   float  = 0.0
 var _slow_factor:   float  = 1.0
 var _slow_timer:    float  = 0.0
+var _spawn_timer:   float  = SPAWN_DELAY
 var _player:        Node2D = null
 
 @onready var visual: Node2D = $Visual
@@ -24,6 +27,13 @@ var _player:        Node2D = null
 func _ready() -> void:
 	add_to_group("enemies")
 	$ContactArea.body_entered.connect(_on_contact_entered)
+
+func is_active() -> bool:
+	return _spawn_timer <= 0.0
+
+func _tick_spawn_delay(delta: float) -> void:
+	if _spawn_timer > 0.0:
+		_spawn_timer -= delta
 
 # ---------------------------------------------------------------------------
 # Shared helpers — call from derived _physics_process as needed
@@ -83,6 +93,8 @@ func _spawn_drop() -> void:
 # Contact damage
 # ---------------------------------------------------------------------------
 func _on_contact_entered(body: Node) -> void:
+	if not is_active():
+		return
 	if body.is_in_group("player") and _contact_timer == 0.0:
 		body.take_damage(contact_damage)
 		_contact_timer = contact_cooldown

@@ -56,10 +56,13 @@ func _snap_to_wall() -> void:
 	global_position = wall_pos
 
 func _physics_process(delta: float) -> void:
+	_tick_spawn_delay(delta)
 	_find_player()
 	_tick_contact(delta)
 	_tick_flash(delta)
 	_tick_slow(delta)
+	if not is_active():
+		return
 	velocity = Vector2.ZERO
 	_do_fire(delta)
 	velocity *= _slow_factor
