@@ -368,15 +368,15 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 # Practice room — boss training arena
 # ---------------------------------------------------------------------------
-const WARDEN_SCENE     = preload("res://scenes/enemies/warden.tscn")
-const RELAY_SCENE      = preload("res://scenes/enemies/relay.tscn")
-const SUPERVISOR_SCENE = preload("res://scenes/enemies/supervisor.tscn")
+const WARDEN_SCENE   = preload("res://scenes/enemies/warden.tscn")
+const RELAY_SCENE    = preload("res://scenes/enemies/relay.tscn")
+const HIVEMIND_SCENE = preload("res://scenes/enemies/hivemind.tscn")
 
-const BOSS_NAMES := ["WARDEN", "RELAY", "SUPERVISOR"]
+const BOSS_NAMES := ["WARDEN", "RELAY", "HIVEMIND"]
 const BOSS_COLORS := [
 	Color(0.6, 0.35, 0.2),   # Warden — rust
 	Color(0.15, 0.55, 0.65), # Relay — teal
-	Color(0.7, 0.2, 0.2),    # Supervisor — red
+	Color(0.5, 0.2, 0.6),    # Hivemind — purple
 ]
 
 func _build_practice_room() -> void:
@@ -469,7 +469,7 @@ func _spawn_practice_boss(boss_idx: int) -> void:
 	match boss_idx:
 		0: scene = WARDEN_SCENE
 		1: scene = RELAY_SCENE
-		_: scene = SUPERVISOR_SCENE
+		_: scene = HIVEMIND_SCENE
 
 	_practice_boss = scene.instantiate()
 	contents.add_child(_practice_boss)

@@ -28,6 +28,12 @@ const BURST_COUNT_P2 := 12
 const BURST_SPEED    := 150.0
 const PROJ_SIZE      := 12.0
 
+const HOMING_COUNT_P1    := 4
+const HOMING_COUNT_P2    := 6
+const HOMING_SPEED       := 100.0
+const HOMING_TURN_SPEED  := 1.8   # radians per second
+const HOMING_DELAY       := 0.3  # delay after radial burst before homing fires
+
 const DRIFTER_SPAWN_MIN := 2
 const DRIFTER_SPAWN_MAX := 4
 const DRIFTER_COUNT_P1_MIN := 2
@@ -57,6 +63,8 @@ var _teleport_count  : int = 0
 var _next_drifter_threshold : int = 0
 
 var _burst_projs     : Array[Node2D] = []
+var _homing_projs    : Array[Node2D] = []
+var _homing_delay    : float = 0.0
 
 var _climax_timer    : float = 0.0
 var _blink_accum     : float = 0.0
@@ -80,6 +88,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_tick_spawn_delay(delta)
+	_find_player()
 	if _phase == Phase.CLIMAX:
 		_tick_climax(delta)
 		return
@@ -88,6 +97,8 @@ func _physics_process(delta: float) -> void:
 
 	_tick_teleport(delta)
 	_tick_burst_projs(delta)
+	_tick_homing_delay(delta)
+	_tick_homing_projs(delta)
 
 	velocity = Vector2.ZERO
 	move_and_slide()
@@ -151,8 +162,9 @@ func _reappear() -> void:
 	_tp_state = TeleportState.IDLE
 	_teleport_count += 1
 
-	# Fire burst
+	# Fire radial burst immediately, then homing after delay
 	_fire_burst()
+	_homing_delay = HOMING_DELAY
 
 	# Check drifter spawn
 	if _teleport_count >= _next_drifter_threshold:
@@ -186,7 +198,6 @@ func _fire_burst() -> void:
 func _spawn_burst_proj(dir: Vector2) -> void:
 	var proj := Node2D.new()
 	proj.set_meta("dir", dir)
-	proj.global_position = global_position
 
 	var poly := Polygon2D.new()
 	var hs := PROJ_SIZE * 0.5
@@ -209,6 +220,7 @@ func _spawn_burst_proj(dir: Vector2) -> void:
 	area.body_entered.connect(_on_burst_hit_player.bind(proj))
 
 	get_parent().add_child(proj)
+	proj.global_position = global_position  # Set AFTER add_child for correct transform
 	_burst_projs.append(proj)
 
 func _on_burst_hit_player(body: Node2D, proj: Node2D) -> void:
@@ -235,6 +247,89 @@ func _tick_burst_projs(delta: float) -> void:
 			still_valid.append(proj)
 
 	_burst_projs = still_valid
+
+# ---------------------------------------------------------------------------
+# Homing Projectiles
+# ---------------------------------------------------------------------------
+func _tick_homing_delay(delta: float) -> void:
+	if _homing_delay <= 0.0:
+		return
+	_homing_delay -= delta
+	if _homing_delay <= 0.0:
+		_fire_homing()
+
+func _fire_homing() -> void:
+	var count := HOMING_COUNT_P2 if _phase == Phase.TWO else HOMING_COUNT_P1
+	for i in count:
+		var angle := TAU * float(i) / float(count)
+		_spawn_homing_proj(angle)
+
+func _spawn_homing_proj(start_angle: float) -> void:
+	var proj := Node2D.new()
+	proj.set_meta("angle", start_angle)
+
+	# Diamond shape visual
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array([
+		Vector2(0, -8), Vector2(5, 0),
+		Vector2(0, 8), Vector2(-5, 0)
+	])
+	poly.color = Color(0.9, 0.3, 0.9)  # purple/magenta
+	proj.add_child(poly)
+
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask = 2
+	var shape := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 6.0
+	shape.shape = circle
+	area.add_child(shape)
+	proj.add_child(area)
+	area.body_entered.connect(_on_homing_hit_player.bind(proj))
+
+	get_parent().add_child(proj)
+	proj.global_position = global_position  # Set AFTER add_child
+	_homing_projs.append(proj)
+
+func _on_homing_hit_player(body: Node2D, proj: Node2D) -> void:
+	if body.is_in_group("player") and body.has_method("take_damage"):
+		body.take_damage(1)
+	if is_instance_valid(proj):
+		proj.queue_free()
+
+func _tick_homing_projs(delta: float) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+
+	var still_valid: Array[Node2D] = []
+
+	for proj in _homing_projs:
+		if not is_instance_valid(proj):
+			continue
+
+		var angle: float = proj.get_meta("angle")
+		var to_player := (_player.global_position - proj.global_position).normalized()
+		var desired_angle := to_player.angle()
+
+		# Smoothly turn towards player
+		var diff := angle_difference(angle, desired_angle)
+		angle += clampf(diff, -HOMING_TURN_SPEED * delta, HOMING_TURN_SPEED * delta)
+		proj.set_meta("angle", angle)
+
+		# Move forward
+		var dir := Vector2.from_angle(angle)
+		proj.global_position += dir * HOMING_SPEED * delta
+		proj.rotation = angle + PI / 2  # Point diamond forward
+
+		# Check bounds
+		var rel := proj.global_position - _room_center
+		if absf(rel.x) > ROOM_HW - WALL_T or absf(rel.y) > ROOM_HH - WALL_T:
+			proj.queue_free()
+		else:
+			still_valid.append(proj)
+
+	_homing_projs = still_valid
 
 # ---------------------------------------------------------------------------
 # Signal Drifters
@@ -310,5 +405,11 @@ func _die() -> void:
 		if is_instance_valid(proj):
 			proj.queue_free()
 	_burst_projs.clear()
+
+	# Cleanup homing projectiles
+	for proj in _homing_projs:
+		if is_instance_valid(proj):
+			proj.queue_free()
+	_homing_projs.clear()
 
 	queue_free()
