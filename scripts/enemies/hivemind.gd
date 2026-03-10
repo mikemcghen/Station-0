@@ -2,8 +2,8 @@ extends EnemyBase
 
 # ---------------------------------------------------------------------------
 # Hivemind — Floor 3 Final Boss
-# Phase 1: Assembly (spawn waves, enemies join core on death)
-# Phase 2: Active (mimics Repeater spread, Warden sweep, Drifter projectiles)
+# Phase 1: Assembly (spawn waves, enemies join core on death, core grows)
+# Phase 2: Active (teleports like Relay, orbiting projectiles follow)
 # Phase 3: Unique (rotating beam, room pulse, homing projectiles)
 # ---------------------------------------------------------------------------
 
@@ -15,37 +15,46 @@ enum Phase { ASSEMBLY, ACTIVE, UNIQUE, CLIMAX }
 const ROOM_HW := 480.0
 const ROOM_HH := 270.0
 const WALL_T  := 32.0
+const WALL_MARGIN := 80.0
 
 # Assembly phase
-const WAVE_COUNT        := 3
-const ENEMIES_PER_WAVE  := 3
-const WAVE_DELAY        := 3.0
-const ASSEMBLY_COMPLETE := 8   # kills needed to complete assembly
+const WAVE_COUNT       := 3
+const ENEMIES_PER_WAVE := 3
+const WAVE_DELAY       := 3.5
 
-# Phase 2 attacks
-const ATTACK_CD_P2      := 3.5
-const SPREAD_COUNT      := 5
-const SPREAD_ANGLE      := 0.6   # radians total spread
-const SPREAD_SPEED      := 120.0
-const SWEEP_SPEED       := 60.0
-const SWEEP_PROJ_SPACE  := 22.0
-const DRIFT_COUNT       := 4
-const DRIFT_SPEED       := 45.0
-const DRIFT_CURVE       := 0.8
+# Teleport (like Relay)
+const TELEPORT_CD_MIN  := 5.0
+const TELEPORT_CD_MAX  := 7.0
+const FADE_OUT_TIME    := 0.15
+const TRANSIT_TIME     := 0.5
+
+# Orbiting projectiles
+const ORBIT_COUNT      := 6
+const ORBIT_RADIUS     := 60.0
+const ORBIT_SPEED      := 2.0   # rad/sec
+const ORBIT_PROJ_SIZE  := 10.0
+const ORBIT_TRANSITION_SPEED := 200.0  # how fast orbiters follow after teleport
+
+# Sweep attack (from Warden)
+const SWEEP_CD         := 4.5
+const SWEEP_SPEED      := 65.0
+const SWEEP_PROJ_SPACE := 22.0
+const SWEEP_GAP_W      := 90.0
 
 # Phase 3 attacks
-const ATTACK_CD_P3      := 2.5
-const BEAM_ROT_SPEED    := 1.2   # rad/sec
-const BEAM_DURATION     := 3.0
-const BEAM_LENGTH       := 500.0
-const BEAM_WIDTH        := 28.0
-const PULSE_FORCE       := 350.0
-const PULSE_CD          := 5.0
-const HOMING_COUNT      := 3
-const HOMING_SPEED      := 70.0
-const HOMING_TURN       := 1.5   # rad/sec
+const ATTACK_CD_P3     := 2.5
+const BEAM_TELEGRAPH   := 0.8   # warning time before beam fires
+const BEAM_ROT_SPEED   := 1.2   # rad/sec
+const BEAM_DURATION    := 3.0
+const BEAM_LENGTH      := 500.0
+const BEAM_WIDTH       := 28.0
+const PULSE_FORCE      := 350.0
+const PULSE_CD         := 5.0
+const HOMING_COUNT     := 4
+const HOMING_SPEED     := 80.0
+const HOMING_TURN      := 1.8   # rad/sec
 
-const FREEZE_DURATION   := 2.0
+const FREEZE_DURATION  := 2.0
 
 const DRIFTER_SCENE  = preload("res://scenes/enemies/drifter.tscn")
 const REPEATER_SCENE = preload("res://scenes/enemies/repeater.tscn")
@@ -59,31 +68,49 @@ var _room_center: Vector2
 
 # Assembly
 var _wave_index:       int   = 0
-var _wave_timer:       float = 2.5   # initial delay before first wave
-var _kills:            int   = 0
-var _assembly_parts:   Array[Node2D] = []
+var _wave_timer:       float = 2.0
 var _spawned_enemies:  Array[Node] = []
+var _core_scale:       float = 0.3   # starts small, grows to 1.0
 
 # Core visual
 var _core_visual: Node2D = null
 var _core_poly:   Polygon2D = null
+var _contact_area: Area2D = null
 
-# Phase 2/3 attacks
-var _attack_timer:   float = 2.0
-var _attack_index:   int   = 0
-var _projectiles:    Array[Dictionary] = []   # {node, vel, type, ...}
+# Teleport state
+enum TeleportState { IDLE, FADING_OUT, IN_TRANSIT }
+var _tp_state:        int   = TeleportState.IDLE
+var _teleport_timer:  float = 3.0
+var _fade_timer:      float = 0.0
+var _transit_timer:   float = 0.0
+
+# Orbiting projectiles
+var _orbiters:        Array[Dictionary] = []  # {node, angle, target_pos}
+var _orbit_angle:     float = 0.0
+
+# Sweep attack
+var _sweep_timer:     float = 3.0
+var _sweep_projs:     Array[Dictionary] = []
+
+# Phase 3 attacks
+var _attack_timer:    float = 2.0
+var _attack_index:    int   = 0
+var _homing_projs:    Array[Dictionary] = []
 
 # Beam state
-var _beam_active:    bool  = false
-var _beam_angle:     float = 0.0
-var _beam_timer:     float = 0.0
-var _beam_node:      Node2D = null
+var _beam_telegraphing: bool  = false
+var _beam_active:       bool  = false
+var _beam_angle:        float = 0.0
+var _beam_timer:        float = 0.0
+var _beam_node:         Node2D = null
+var _telegraph_node:    Node2D = null
+var _telegraph_timer:   float = 0.0
 
 # Pulse state
-var _pulse_timer:    float = 3.0
+var _pulse_timer:     float = 3.0
 
 # Climax
-var _climax_timer:   float = 0.0
+var _climax_timer:    float = 0.0
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -92,12 +119,18 @@ func _ready() -> void:
 	super._ready()
 	max_health     = 350.0
 	current_health = max_health
-	contact_damage   = 1.0
+	contact_damage   = 1.5
 	contact_cooldown = 0.8
 
 	_room_center = global_position
 	_build_core_visual()
 	_core_visual.visible = false   # hidden during assembly
+	_core_visual.scale = Vector2(_core_scale, _core_scale)
+
+	# Disable contact during assembly
+	if _contact_area:
+		_contact_area.monitoring = false
+		_contact_area.monitorable = false
 
 
 func _physics_process(delta: float) -> void:
@@ -115,7 +148,9 @@ func _physics_process(delta: float) -> void:
 		Phase.CLIMAX:
 			_tick_climax(delta)
 
-	_tick_projectiles(delta)
+	_tick_orbiters(delta)
+	_tick_sweep_projs(delta)
+	_tick_homing_projs(delta)
 	_tick_flash(delta)
 	velocity = Vector2.ZERO
 	move_and_slide()
@@ -148,7 +183,26 @@ func _build_core_visual() -> void:
 	eye.color = Color(0.8, 0.2, 0.5)
 	_core_visual.add_child(eye)
 
+	# Contact area for damage
+	_contact_area = Area2D.new()
+	_contact_area.collision_layer = 0
+	_contact_area.collision_mask = 2
+	var cs := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 40.0
+	cs.shape = circle
+	_contact_area.add_child(cs)
+	_contact_area.body_entered.connect(_on_contact_hit)
+	_core_visual.add_child(_contact_area)
+
 	add_child(_core_visual)
+
+
+func _on_contact_hit(body: Node) -> void:
+	if _phase == Phase.ASSEMBLY:
+		return
+	if body.is_in_group("player") and body.has_method("take_damage"):
+		body.take_damage(contact_damage)
 
 
 # ---------------------------------------------------------------------------
@@ -159,10 +213,10 @@ func _tick_assembly(delta: float) -> void:
 	if _wave_timer <= 0.0 and _wave_index < WAVE_COUNT:
 		_spawn_wave()
 		_wave_index += 1
-		_wave_timer = WAVE_DELAY + randf_range(0.0, 1.0)
+		_wave_timer = WAVE_DELAY
 
-	# Check if assembly complete
-	if _kills >= ASSEMBLY_COMPLETE:
+	# Check if assembly complete: all waves spawned AND all enemies dead
+	if _wave_index >= WAVE_COUNT and _spawned_enemies.size() == 0:
 		_enter_active()
 
 
@@ -179,8 +233,8 @@ func _spawn_wave() -> void:
 			randf_range(-hh, hh)
 		)
 		# Avoid spawning too close to center
-		if pos.length() < 100.0:
-			pos = pos.normalized() * 100.0
+		if pos.length() < 120.0:
+			pos = pos.normalized() * 120.0
 		get_parent().add_child(enemy)
 		enemy.global_position = _room_center + pos
 
@@ -191,110 +245,304 @@ func _spawn_wave() -> void:
 
 func _on_enemy_died(enemy: Node) -> void:
 	if _phase != Phase.ASSEMBLY:
+		_spawned_enemies.erase(enemy)
 		return
 
 	# Remove from tracked list
 	_spawned_enemies.erase(enemy)
-	_kills += 1
 
-	# Create visual part flying to center (use last known position offset)
+	# Create purple dot flying to center
 	var part := Polygon2D.new()
 	var pts := PackedVector2Array()
 	for i in 6:
 		var a := TAU * i / 6.0
 		pts.append(Vector2(cos(a), sin(a)) * randf_range(8.0, 14.0))
 	part.polygon = pts
-	part.color = Color(0.4, 0.2, 0.5, 0.8)
-	# Position near center since enemy is already freed by now
-	part.global_position = _room_center + Vector2(randf_range(-100, 100), randf_range(-100, 100))
+	part.color = Color(0.5, 0.2, 0.6, 0.9)
+	# Position at edge since we don't know exact death position
+	part.global_position = _room_center + Vector2(randf_range(-150, 150), randf_range(-150, 150))
 	get_parent().add_child(part)
-	_assembly_parts.append(part)
 
-	# Tween to center
+	# Tween to center and grow the core
 	var tw := get_tree().create_tween()
-	tw.tween_property(part, "global_position", _room_center, 0.8).set_ease(Tween.EASE_IN)
-	tw.tween_property(part, "modulate:a", 0.0, 0.3)
+	tw.tween_property(part, "global_position", _room_center, 0.6).set_ease(Tween.EASE_IN)
+	tw.tween_callback(_grow_core)
+	tw.tween_property(part, "modulate:a", 0.0, 0.2)
 	tw.tween_callback(part.queue_free)
+
+
+func _grow_core() -> void:
+	# Each kill grows the core toward full size
+	var total_enemies := WAVE_COUNT * ENEMIES_PER_WAVE
+	var growth_per_kill := 0.7 / float(total_enemies)  # grows from 0.3 to 1.0
+	_core_scale = minf(_core_scale + growth_per_kill, 1.0)
+
+	# Show core once it starts growing
+	if not _core_visual.visible:
+		_core_visual.visible = true
+	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
 
 func _enter_active() -> void:
 	_phase = Phase.ACTIVE
 	_core_visual.visible = true
-	_attack_timer = 1.5
-	_attack_index = 0
+	_core_visual.scale = Vector2(1.0, 1.0)
 
-	# Clean up any remaining assembly parts
-	for part in _assembly_parts:
-		if is_instance_valid(part):
-			part.queue_free()
-	_assembly_parts.clear()
+	# Enable contact
+	if _contact_area:
+		_contact_area.monitoring = true
+		_contact_area.monitorable = true
+
+	_teleport_timer = 2.0
+	_sweep_timer = 3.0
+
+	# Spawn orbiting projectiles
+	_spawn_orbiters()
 
 	# Emit boss health bar start
 	EventBus.boss_health_changed.emit(current_health, max_health)
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 — Active (mimic attacks)
+# Phase 2 — Active (teleport + orbiters + sweep)
 # ---------------------------------------------------------------------------
 func _tick_active(delta: float) -> void:
 	_find_player()
 	_tick_contact(delta)
+	_tick_teleport(delta)
 
-	_attack_timer -= delta
-	if _attack_timer <= 0.0:
-		_do_active_attack()
-		_attack_index = (_attack_index + 1) % 3
-		_attack_timer = ATTACK_CD_P2
-
-
-func _do_active_attack() -> void:
-	match _attack_index:
-		0: _attack_spread()
-		1: _attack_sweep()
-		2: _attack_drift()
+	# Sweep attack on timer (only when idle)
+	if _tp_state == TeleportState.IDLE:
+		_sweep_timer -= delta
+		if _sweep_timer <= 0.0:
+			_attack_sweep()
+			_sweep_timer = SWEEP_CD
 
 
-func _attack_spread() -> void:
-	# Repeater-style spread shot toward player
-	if _player == null:
+func _tick_teleport(delta: float) -> void:
+	match _tp_state:
+		TeleportState.IDLE:
+			_teleport_timer -= delta
+			if _teleport_timer <= 0.0:
+				_start_fade_out()
+		TeleportState.FADING_OUT:
+			_fade_timer -= delta
+			_core_visual.modulate.a = _fade_timer / FADE_OUT_TIME
+			if _fade_timer <= 0.0:
+				_enter_transit()
+		TeleportState.IN_TRANSIT:
+			_transit_timer -= delta
+			if _transit_timer <= 0.0:
+				_reappear()
+
+
+func _start_fade_out() -> void:
+	_tp_state = TeleportState.FADING_OUT
+	_fade_timer = FADE_OUT_TIME
+
+
+func _enter_transit() -> void:
+	_tp_state = TeleportState.IN_TRANSIT
+	_core_visual.visible = false
+	_core_visual.modulate.a = 0.0
+	if _contact_area:
+		_contact_area.monitoring = false
+	_transit_timer = TRANSIT_TIME
+
+
+func _reappear() -> void:
+	# Pick random position within room bounds
+	var min_x := _room_center.x - ROOM_HW + WALL_T + WALL_MARGIN
+	var max_x := _room_center.x + ROOM_HW - WALL_T - WALL_MARGIN
+	var min_y := _room_center.y - ROOM_HH + WALL_T + WALL_MARGIN
+	var max_y := _room_center.y + ROOM_HH - WALL_T - WALL_MARGIN
+
+	global_position = Vector2(
+		randf_range(min_x, max_x),
+		randf_range(min_y, max_y)
+	)
+
+	# Show visual with flash
+	_core_visual.visible = true
+	_core_visual.modulate = Color(2.0, 2.0, 2.0, 1.0)
+	if _contact_area:
+		_contact_area.monitoring = true
+
+	var tw := create_tween()
+	var base_color := Color(0.5, 0.15, 0.25) if _phase == Phase.UNIQUE else Color(1, 1, 1, 1)
+	tw.tween_property(_core_visual, "modulate", base_color, 0.15)
+
+	_tp_state = TeleportState.IDLE
+
+	# Set orbiters to transition toward new position (don't teleport with boss)
+	for orb in _orbiters:
+		orb["transitioning"] = true
+
+	_roll_teleport_cooldown()
+
+
+func _roll_teleport_cooldown() -> void:
+	_teleport_timer = randf_range(TELEPORT_CD_MIN, TELEPORT_CD_MAX)
+
+
+# ---------------------------------------------------------------------------
+# Orbiting Projectiles
+# ---------------------------------------------------------------------------
+func _spawn_orbiters() -> void:
+	for i in ORBIT_COUNT:
+		var angle := TAU * i / float(ORBIT_COUNT)
+		var orb := _create_orbiter(angle)
+		_orbiters.append(orb)
+
+
+func _create_orbiter(angle: float) -> Dictionary:
+	var proj := Node2D.new()
+
+	var poly := Polygon2D.new()
+	var hs := ORBIT_PROJ_SIZE * 0.5
+	poly.polygon = PackedVector2Array([
+		Vector2(-hs, -hs), Vector2(hs, -hs),
+		Vector2(hs, hs), Vector2(-hs, hs)
+	])
+	poly.color = Color(0.6, 0.3, 0.7)
+	proj.add_child(poly)
+
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask = 2
+	var cs := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = hs
+	cs.shape = circle
+	area.add_child(cs)
+	area.body_entered.connect(_on_orbiter_hit.bind(proj))
+	proj.add_child(area)
+
+	get_parent().add_child(proj)
+	proj.global_position = global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
+
+	return {"node": proj, "angle": angle, "transitioning": false}
+
+
+func _on_orbiter_hit(body: Node, proj: Node2D) -> void:
+	if body.is_in_group("player") and body.has_method("take_damage"):
+		body.take_damage(1.0)
+
+
+func _tick_orbiters(delta: float) -> void:
+	if _phase == Phase.ASSEMBLY:
 		return
 
-	var base_dir := ((_player.global_position) - global_position).normalized()
-	var start_angle := base_dir.angle() - SPREAD_ANGLE * 0.5
-	var step := SPREAD_ANGLE / float(SPREAD_COUNT - 1) if SPREAD_COUNT > 1 else 0.0
+	_orbit_angle += ORBIT_SPEED * delta
 
-	for i in SPREAD_COUNT:
-		var angle := start_angle + step * i
-		var dir := Vector2.from_angle(angle)
-		_spawn_projectile(global_position, dir * SPREAD_SPEED, "spread")
+	for orb in _orbiters:
+		var node: Node2D = orb["node"]
+		if not is_instance_valid(node):
+			continue
+
+		var angle: float = orb["angle"] + _orbit_angle
+		var target_pos := global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
+
+		if orb["transitioning"]:
+			# Move toward target position
+			var dir := (target_pos - node.global_position).normalized()
+			var dist := node.global_position.distance_to(target_pos)
+			if dist < ORBIT_TRANSITION_SPEED * delta:
+				node.global_position = target_pos
+				orb["transitioning"] = false
+			else:
+				node.global_position += dir * ORBIT_TRANSITION_SPEED * delta
+		else:
+			# Normal orbit
+			node.global_position = target_pos
 
 
+func _clear_orbiters() -> void:
+	for orb in _orbiters:
+		if is_instance_valid(orb["node"]):
+			orb["node"].queue_free()
+	_orbiters.clear()
+
+
+# ---------------------------------------------------------------------------
+# Sweep Attack (from Warden)
+# ---------------------------------------------------------------------------
 func _attack_sweep() -> void:
-	# Warden-style horizontal sweep with gaps
 	var inner_left  := -ROOM_HW + WALL_T
 	var inner_right :=  ROOM_HW - WALL_T
 	var sweep_dir   := 1.0 if randf() < 0.5 else -1.0
-	var start_y     := _room_center.y + (-ROOM_HH + WALL_T) * -sweep_dir
-	var vel         := Vector2(0.0, SWEEP_SPEED * sweep_dir)
+
+	# Fix: sweep_dir 1 = moving DOWN, so start at TOP
+	var start_y: float
+	if sweep_dir > 0.0:
+		start_y = _room_center.y - ROOM_HH + WALL_T - 10.0  # top edge
+	else:
+		start_y = _room_center.y + ROOM_HH - WALL_T + 10.0  # bottom edge
+
+	var vel := Vector2(0.0, SWEEP_SPEED * sweep_dir)
 
 	# One gap
-	var gap_center := randf_range(inner_left + 80.0, inner_right - 80.0)
-	var gap_width  := 90.0
+	var gap_center := randf_range(inner_left + 100.0, inner_right - 100.0)
 
 	var x := inner_left
 	while x <= inner_right:
-		if abs(x - gap_center) > gap_width * 0.5:
-			_spawn_projectile(Vector2(_room_center.x + x, start_y), vel, "sweep")
+		if abs(x - gap_center) > SWEEP_GAP_W * 0.5:
+			_spawn_sweep_proj(Vector2(_room_center.x + x, start_y), vel)
 		x += SWEEP_PROJ_SPACE
 
 
-func _attack_drift() -> void:
-	# Drifter-style curving projectiles
-	for i in DRIFT_COUNT:
-		var angle := TAU * i / float(DRIFT_COUNT) + randf_range(-0.2, 0.2)
-		var dir := Vector2.from_angle(angle)
-		var curve := DRIFT_CURVE if randf() < 0.5 else -DRIFT_CURVE
-		_spawn_projectile(global_position, dir * DRIFT_SPEED, "drift", {"curve": curve})
+func _spawn_sweep_proj(pos: Vector2, vel: Vector2) -> void:
+	var proj := Node2D.new()
+
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array([
+		Vector2(-7, -7), Vector2(7, -7),
+		Vector2(7, 7), Vector2(-7, 7)
+	])
+	poly.color = Color(0.7, 0.3, 0.5)
+	proj.add_child(poly)
+
+	var area := Area2D.new()
+	area.collision_layer = 0
+	area.collision_mask = 2
+	var cs := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 6.0
+	cs.shape = circle
+	area.add_child(cs)
+	area.body_entered.connect(_on_sweep_hit.bind(proj))
+	proj.add_child(area)
+
+	get_parent().add_child(proj)
+	proj.global_position = pos
+
+	_sweep_projs.append({"node": proj, "vel": vel})
+
+
+func _on_sweep_hit(body: Node, proj: Node2D) -> void:
+	if body.is_in_group("player") and body.has_method("take_damage"):
+		body.take_damage(1.0)
+	if is_instance_valid(proj):
+		proj.queue_free()
+
+
+func _tick_sweep_projs(delta: float) -> void:
+	var still_valid: Array[Dictionary] = []
+
+	for p in _sweep_projs:
+		var node: Node2D = p["node"]
+		if not is_instance_valid(node):
+			continue
+
+		node.global_position += p["vel"] * delta
+
+		# Bounds check
+		if absf(node.global_position.y - _room_center.y) > ROOM_HH + 30.0:
+			node.queue_free()
+		else:
+			still_valid.append(p)
+
+	_sweep_projs = still_valid
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +550,7 @@ func _attack_drift() -> void:
 # ---------------------------------------------------------------------------
 func _enter_unique() -> void:
 	_phase = Phase.UNIQUE
-	_attack_timer = 1.0
+	_attack_timer = 1.5
 	_attack_index = 0
 	_pulse_timer = PULSE_CD * 0.5
 
@@ -313,9 +561,16 @@ func _enter_unique() -> void:
 func _tick_unique(delta: float) -> void:
 	_find_player()
 	_tick_contact(delta)
+	_tick_teleport(delta)
 
-	# Rotating beam
-	if _beam_active:
+	# Only attack when not teleporting
+	if _tp_state != TeleportState.IDLE:
+		return
+
+	# Beam telegraph phase
+	if _beam_telegraphing:
+		_tick_beam_telegraph(delta)
+	elif _beam_active:
 		_tick_beam(delta)
 	else:
 		_attack_timer -= delta
@@ -335,13 +590,57 @@ func _do_unique_attack() -> void:
 	match _attack_index:
 		0: _start_beam()
 		1: _attack_homing()
-		2: _attack_homing()   # double up on homing since beam takes time
+		2: _attack_sweep()
 
 
 func _start_beam() -> void:
+	# Start with telegraph phase
+	_beam_telegraphing = true
+	_telegraph_timer = BEAM_TELEGRAPH
+	_beam_angle = randf() * TAU
+
+	# Create thin flashing telegraph line
+	_telegraph_node = Node2D.new()
+	_telegraph_node.position = Vector2.ZERO
+
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array([
+		Vector2(0, -2), Vector2(BEAM_LENGTH, -2),
+		Vector2(BEAM_LENGTH, 2), Vector2(0, 2)
+	])
+	poly.color = Color(1.0, 0.5, 0.5, 0.8)
+	poly.name = "TelegraphLine"
+	_telegraph_node.add_child(poly)
+
+	_telegraph_node.rotation = _beam_angle
+	add_child(_telegraph_node)
+
+
+func _tick_beam_telegraph(delta: float) -> void:
+	_telegraph_timer -= delta
+
+	# Flash the telegraph line
+	if _telegraph_node != null:
+		var line := _telegraph_node.get_node_or_null("TelegraphLine") as Polygon2D
+		if line:
+			var flash := fmod(_telegraph_timer, 0.15) < 0.075
+			line.color = Color(1.0, 0.3, 0.3, 0.9) if flash else Color(1.0, 0.7, 0.7, 0.5)
+
+	if _telegraph_timer <= 0.0:
+		_end_telegraph_start_beam()
+
+
+func _end_telegraph_start_beam() -> void:
+	_beam_telegraphing = false
+
+	# Remove telegraph
+	if _telegraph_node != null:
+		_telegraph_node.queue_free()
+		_telegraph_node = null
+
+	# Now spawn the actual beam
 	_beam_active = true
 	_beam_timer = BEAM_DURATION
-	_beam_angle = randf() * TAU
 
 	_beam_node = Node2D.new()
 	_beam_node.position = Vector2.ZERO
@@ -367,6 +666,7 @@ func _start_beam() -> void:
 	area.body_entered.connect(_on_beam_hit)
 	_beam_node.add_child(area)
 
+	_beam_node.rotation = _beam_angle
 	add_child(_beam_node)
 
 
@@ -382,9 +682,13 @@ func _tick_beam(delta: float) -> void:
 
 func _end_beam() -> void:
 	_beam_active = false
+	_beam_telegraphing = false
 	if _beam_node != null:
 		_beam_node.queue_free()
 		_beam_node = null
+	if _telegraph_node != null:
+		_telegraph_node.queue_free()
+		_telegraph_node = null
 
 
 func _on_beam_hit(body: Node) -> void:
@@ -393,7 +697,6 @@ func _on_beam_hit(body: Node) -> void:
 
 
 func _attack_pulse() -> void:
-	# Push player toward walls
 	if _player == null or not is_instance_valid(_player):
 		return
 
@@ -421,30 +724,19 @@ func _attack_pulse() -> void:
 func _attack_homing() -> void:
 	for i in HOMING_COUNT:
 		var angle := TAU * i / float(HOMING_COUNT) + randf_range(-0.3, 0.3)
-		var dir := Vector2.from_angle(angle)
-		_spawn_projectile(global_position + dir * 30.0, dir * HOMING_SPEED, "homing")
+		_spawn_homing_proj(angle)
 
 
-# ---------------------------------------------------------------------------
-# Projectile system
-# ---------------------------------------------------------------------------
-func _spawn_projectile(pos: Vector2, vel: Vector2, type: String, extra: Dictionary = {}) -> void:
+func _spawn_homing_proj(start_angle: float) -> void:
 	var proj := Node2D.new()
+	proj.set_meta("angle", start_angle)
 
 	var poly := Polygon2D.new()
-	var size := 10.0 if type != "sweep" else 14.0
-	var hs := size * 0.5
 	poly.polygon = PackedVector2Array([
-		Vector2(-hs, -hs), Vector2(hs, -hs),
-		Vector2(hs, hs), Vector2(-hs, hs)
+		Vector2(0, -8), Vector2(5, 0),
+		Vector2(0, 8), Vector2(-5, 0)
 	])
-
-	match type:
-		"spread": poly.color = Color(0.9, 0.5, 0.2)
-		"sweep":  poly.color = Color(0.7, 0.3, 0.5)
-		"drift":  poly.color = Color(0.5, 0.4, 0.8)
-		"homing": poly.color = Color(1.0, 0.2, 0.4)
-
+	poly.color = Color(1.0, 0.2, 0.4)
 	proj.add_child(poly)
 
 	var area := Area2D.new()
@@ -452,70 +744,56 @@ func _spawn_projectile(pos: Vector2, vel: Vector2, type: String, extra: Dictiona
 	area.collision_mask = 2
 	var cs := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = hs
+	circle.radius = 6.0
 	cs.shape = circle
 	area.add_child(cs)
-	area.body_entered.connect(_on_proj_hit.bind(proj))
+	area.body_entered.connect(_on_homing_hit.bind(proj))
 	proj.add_child(area)
 
 	get_parent().add_child(proj)
-	proj.global_position = pos  # Set AFTER add_child for correct transform
+	proj.global_position = global_position + Vector2.from_angle(start_angle) * 30.0
 
-	var data := {"node": proj, "vel": vel, "type": type}
-	data.merge(extra)
-	_projectiles.append(data)
+	_homing_projs.append({"node": proj, "angle": start_angle})
 
 
-func _on_proj_hit(body: Node, proj: Node2D) -> void:
+func _on_homing_hit(body: Node, proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
 		body.take_damage(1.0)
 	if is_instance_valid(proj):
 		proj.queue_free()
 
 
-func _tick_projectiles(delta: float) -> void:
+func _tick_homing_projs(delta: float) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+
 	var still_valid: Array[Dictionary] = []
 
-	for p in _projectiles:
+	for p in _homing_projs:
 		var node: Node2D = p["node"]
 		if not is_instance_valid(node):
 			continue
 
-		var vel: Vector2 = p["vel"]
+		var angle: float = p["angle"]
+		var to_player := (_player.global_position - node.global_position).normalized()
+		var desired_angle := to_player.angle()
 
-		# Apply curve for drift projectiles
-		if p["type"] == "drift" and p.has("curve"):
-			var curve_rate: float = p["curve"]
-			vel = vel.rotated(curve_rate * delta)
-			p["vel"] = vel
+		var diff := angle_difference(angle, desired_angle)
+		angle += clampf(diff, -HOMING_TURN * delta, HOMING_TURN * delta)
+		p["angle"] = angle
 
-		# Homing behavior
-		if p["type"] == "homing" and _player != null and is_instance_valid(_player):
-			var to_player := (_player.global_position - node.global_position).normalized()
-			var current_dir := vel.normalized()
-			var new_dir := current_dir.rotated(
-				clampf(current_dir.angle_to(to_player), -HOMING_TURN * delta, HOMING_TURN * delta)
-			)
-			vel = new_dir * vel.length()
-			p["vel"] = vel
-
-		node.global_position += vel * delta
+		var dir := Vector2.from_angle(angle)
+		node.global_position += dir * HOMING_SPEED * delta
+		node.rotation = angle + PI / 2
 
 		# Bounds check
 		var rel := node.global_position - _room_center
-		if absf(rel.x) > ROOM_HW + 20.0 or absf(rel.y) > ROOM_HH + 20.0:
+		if absf(rel.x) > ROOM_HW - WALL_T or absf(rel.y) > ROOM_HH - WALL_T:
 			node.queue_free()
 		else:
 			still_valid.append(p)
 
-	_projectiles = still_valid
-
-
-func _clear_projectiles() -> void:
-	for p in _projectiles:
-		if is_instance_valid(p["node"]):
-			p["node"].queue_free()
-	_projectiles.clear()
+	_homing_projs = still_valid
 
 
 # ---------------------------------------------------------------------------
@@ -524,6 +802,8 @@ func _clear_projectiles() -> void:
 func take_damage(amount: float) -> void:
 	if _phase == Phase.ASSEMBLY or _phase == Phase.CLIMAX:
 		return   # invulnerable during assembly and climax
+	if _tp_state != TeleportState.IDLE:
+		return   # invulnerable while teleporting
 
 	current_health -= amount
 	_flash_timer = 0.1
@@ -538,6 +818,8 @@ func take_damage(amount: float) -> void:
 
 
 func _tick_flash(delta: float) -> void:
+	if _phase == Phase.ASSEMBLY:
+		return
 	if _flash_timer > 0.0:
 		_flash_timer -= delta
 		_core_poly.color = Color(2.5, 2.5, 2.5)
@@ -569,7 +851,18 @@ func _tick_climax(delta: float) -> void:
 
 
 func _die() -> void:
-	_clear_projectiles()
+	_clear_orbiters()
 	_end_beam()
+
+	for p in _sweep_projs:
+		if is_instance_valid(p["node"]):
+			p["node"].queue_free()
+	_sweep_projs.clear()
+
+	for p in _homing_projs:
+		if is_instance_valid(p["node"]):
+			p["node"].queue_free()
+	_homing_projs.clear()
+
 	EventBus.boss_died.emit()
 	queue_free()

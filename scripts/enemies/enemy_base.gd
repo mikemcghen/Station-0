@@ -85,6 +85,8 @@ func _die() -> void:
 	queue_free()
 
 func _spawn_drop() -> void:
+	if not RunManager.run_active:
+		return  # No drops in practice/hub
 	var orb = preload("res://scenes/enemies/currency_orb.tscn").instantiate()
 	orb.position = (get_parent() as Node2D).to_local(global_position)
 	get_parent().call_deferred("add_child", orb)
