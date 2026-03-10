@@ -22,6 +22,7 @@ func _ready() -> void:
 
 func _load_game() -> void:
 	SaveManager.load_save()
+	EventBus.save_loaded.emit()
 
 func change_state(new_state: GameState) -> void:
 	_previous_state = current_state

@@ -51,12 +51,22 @@ var shield_projector: bool = false
 
 func _ready() -> void:
 	EventBus.body_part_equipped.connect(_on_part_equipped)
+	EventBus.save_loaded.connect(_on_save_loaded)
 	recalculate()
 	if RunManager.player_health_carry > 0.0:
 		current_health = minf(RunManager.player_health_carry, max_health)
 		RunManager.player_health_carry = -1.0
 	else:
 		current_health = max_health   # fresh run — start at full HP
+
+func _on_save_loaded() -> void:
+	var old_max := max_health
+	recalculate()
+	# Grant bonus HP from body parts on fresh start
+	if RunManager.player_health_carry < 0.0 and max_health > old_max:
+		current_health += (max_health - old_max)
+	current_health = minf(current_health, max_health)
+	EventBus.player_health_changed.emit(current_health, max_health)
 
 func recalculate() -> void:
 	speed      = BASE_SPEED      + UpgradeManager.get_stat_modifier("speed")
