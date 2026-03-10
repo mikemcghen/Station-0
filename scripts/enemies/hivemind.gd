@@ -467,7 +467,8 @@ func _tick_orbiters(delta: float) -> void:
 			continue
 
 		# Fade visual as it ages
-		var fade := 1.0 - (orb["age"] / ORBIT_DECAY_TIME) * 0.5
+		var age_val: float = orb["age"]
+		var fade: float = 1.0 - (age_val / ORBIT_DECAY_TIME) * 0.5
 		var poly := node.get_node_or_null("Poly") as Polygon2D
 		if poly:
 			poly.color = Color(0.6, 0.3, 0.7, fade)
