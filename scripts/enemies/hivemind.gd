@@ -18,9 +18,9 @@ const WALL_T  := 32.0
 
 # Assembly phase
 const WAVE_COUNT        := 3
-const ENEMIES_PER_WAVE  := 5
-const WAVE_DELAY        := 2.0
-const ASSEMBLY_COMPLETE := 15   # kills needed to complete assembly
+const ENEMIES_PER_WAVE  := 3
+const WAVE_DELAY        := 3.0
+const ASSEMBLY_COMPLETE := 8   # kills needed to complete assembly
 
 # Phase 2 attacks
 const ATTACK_CD_P2      := 3.5
@@ -59,7 +59,7 @@ var _room_center: Vector2
 
 # Assembly
 var _wave_index:       int   = 0
-var _wave_timer:       float = 1.5
+var _wave_timer:       float = 2.5   # initial delay before first wave
 var _kills:            int   = 0
 var _assembly_parts:   Array[Node2D] = []
 var _spawned_enemies:  Array[Node] = []
@@ -430,7 +430,6 @@ func _attack_homing() -> void:
 # ---------------------------------------------------------------------------
 func _spawn_projectile(pos: Vector2, vel: Vector2, type: String, extra: Dictionary = {}) -> void:
 	var proj := Node2D.new()
-	proj.global_position = pos
 
 	var poly := Polygon2D.new()
 	var size := 10.0 if type != "sweep" else 14.0
@@ -460,6 +459,7 @@ func _spawn_projectile(pos: Vector2, vel: Vector2, type: String, extra: Dictiona
 	proj.add_child(area)
 
 	get_parent().add_child(proj)
+	proj.global_position = pos  # Set AFTER add_child for correct transform
 
 	var data := {"node": proj, "vel": vel, "type": type}
 	data.merge(extra)
