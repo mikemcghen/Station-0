@@ -33,7 +33,7 @@ const MINE_CD_P2     := 2.5
 const MINE_RADIUS    := 18.0
 const MINE_ARM_TIME  := 1.0
 const MINE_LIFE_TIME := 3.0
-const MINE_AOE       := 50.0
+const MINE_AOE       := 70.0
 
 const FREEZE_DURATION := 1.5
 
@@ -261,15 +261,19 @@ func _tick_mines(delta: float) -> void:
 
 		entry["timer"] += delta
 
-		# Arm at 1 second — start pulsing red
+		# Arm at 1 second — start pulsing red and show AOE ring
 		if not entry["armed"] and entry["timer"] >= MINE_ARM_TIME:
 			entry["armed"] = true
+			var aoe_ring: Polygon2D = entry["aoe_ring"]
+			aoe_ring.visible = true
 
-		# Armed visual pulse
+		# Armed visual pulse (mine core and AOE ring)
 		if entry["armed"]:
 			var poly: Polygon2D = entry["poly"]
+			var aoe_ring: Polygon2D = entry["aoe_ring"]
 			var pulse := fmod(entry["timer"], 0.25) < 0.125
 			poly.color = Color(1.0, 0.15, 0.1, 0.95) if pulse else Color(0.6, 0.08, 0.05, 0.9)
+			aoe_ring.color = Color(1.0, 0.3, 0.1, 0.25) if pulse else Color(1.0, 0.3, 0.1, 0.12)
 
 		# Explode at 3 seconds
 		if entry["timer"] >= MINE_LIFE_TIME:
@@ -281,6 +285,17 @@ func _tick_mines(delta: float) -> void:
 
 func _spawn_mine(world_pos: Vector2) -> void:
 	var mine := Node2D.new()
+
+	# AOE ring visual — shows blast radius when armed (hidden initially)
+	var aoe_ring := Polygon2D.new()
+	var aoe_pts  := PackedVector2Array()
+	for j in 24:
+		var a := TAU * j / 24.0
+		aoe_pts.append(Vector2(cos(a), sin(a)) * MINE_AOE)
+	aoe_ring.polygon = aoe_pts
+	aoe_ring.color   = Color(1.0, 0.3, 0.1, 0.15)
+	aoe_ring.visible = false
+	mine.add_child(aoe_ring)
 
 	# Visual — dim dark red polygon circle (not armed yet)
 	var poly := Polygon2D.new()
@@ -294,7 +309,7 @@ func _spawn_mine(world_pos: Vector2) -> void:
 
 	get_parent().add_child(mine)
 	mine.global_position = world_pos
-	_mines.append({"node": mine, "timer": 0.0, "armed": false, "poly": poly})
+	_mines.append({"node": mine, "timer": 0.0, "armed": false, "poly": poly, "aoe_ring": aoe_ring})
 
 
 func _explode_mine(entry: Dictionary) -> void:
