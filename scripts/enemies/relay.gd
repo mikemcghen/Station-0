@@ -163,15 +163,17 @@ func _reappear() -> void:
 	_tp_state = TeleportState.IDLE
 	_teleport_count += 1
 
-	# Fire radial burst immediately, then homing after delay
+	# Fire radial burst immediately
 	_fire_burst()
-	_homing_delay = HOMING_DELAY
 
-	# Check drifter spawn
+	# Check drifter spawn - skip homing projectiles when spawning drifters
 	if _teleport_count >= _next_drifter_threshold:
 		_spawn_drifters()
 		_teleport_count = 0
 		_roll_drifter_threshold()
+	else:
+		# Fire homing projectiles only when not spawning drifters
+		_homing_delay = HOMING_DELAY
 
 	_roll_teleport_cooldown()
 
