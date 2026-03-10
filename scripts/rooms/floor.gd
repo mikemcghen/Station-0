@@ -35,16 +35,21 @@ func _ready() -> void:
 func _build_floor(floor_data: Array) -> void:
 	var start_pos := Vector2i.ZERO
 
+	# First pass: instantiate all rooms and register them so lookups work
 	for room_data in floor_data:
 		var room_node: Room = ROOM_SCENE.instantiate()
 		room_node.position = _grid_to_world(room_data.grid_pos)
+		room_node.data = room_data
 		rooms_container.add_child(room_node)
-		room_node.setup(room_data, self)
 		_rooms[room_data.grid_pos] = room_node
 		_rooms_data[room_data.grid_pos] = room_data
 
 		if room_data.type == RoomData.RoomType.START:
 			start_pos = room_data.grid_pos
+
+	# Second pass: setup rooms (builds doors with correct adjacent room type lookups)
+	for room_data in floor_data:
+		_rooms[room_data.grid_pos].setup(room_data, self)
 
 	# Snap camera + player to start room
 	var world_start := _grid_to_world(start_pos)
