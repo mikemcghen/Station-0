@@ -21,3 +21,7 @@ Thumbs.db
 # Local config (not for version control)
 *.cfg
 !project.godot
+
+# Local notes (kept locally, not tracked)
+PRODUCTION_NOTES.md
+DESIGN_NOTES.md
