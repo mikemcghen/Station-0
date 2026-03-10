@@ -138,14 +138,17 @@ func _ready() -> void:
 	_core_visual.visible = false   # hidden during assembly
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
-	# Scale down collision during assembly (contact area disabled, but hitbox active for projectiles)
+	# During assembly: disable contact area and player collision
+	# Only collide with walls (layer 1) to avoid "attaching" to player
 	if _contact_area:
 		_contact_area.monitoring = false
 		_contact_area.monitorable = false
 		_contact_area.scale = Vector2(_core_scale, _core_scale)
 	if _collision_shape:
-		# Keep hitbox enabled but scaled - boss is invulnerable during assembly via take_damage()
 		_collision_shape.scale = Vector2(_core_scale, _core_scale)
+
+	# Disable player collision during assembly (mask 1 = walls only, not 3 = walls+player)
+	collision_mask = 1
 
 
 func _physics_process(delta: float) -> void:
@@ -317,6 +320,9 @@ func _enter_active() -> void:
 		_contact_area.scale = Vector2(1.0, 1.0)
 	if _collision_shape:
 		_collision_shape.scale = Vector2(1.0, 1.0)
+
+	# Re-enable player collision (mask 3 = walls + player)
+	collision_mask = 3
 
 	_teleport_timer = 2.0
 	_sweep_timer = 3.0
