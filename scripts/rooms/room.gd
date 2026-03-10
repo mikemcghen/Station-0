@@ -55,6 +55,7 @@ var data:         RoomData = null
 var _floor:       Node     = null   # reference to floor.gd node
 var _enemy_count: int      = 0
 var _doors:       Dictionary = {}   # direction -> Area2D trigger
+var _physical_doors: Dictionary = {}  # direction -> RoomDoor
 
 # ---------------------------------------------------------------------------
 # Node refs (set by room_base.tscn)
@@ -62,6 +63,7 @@ var _doors:       Dictionary = {}   # direction -> Area2D trigger
 @onready var floor_poly:    Polygon2D = $Floor
 @onready var walls_node:    Node2D    = $Walls
 @onready var door_triggers: Node2D    = $DoorTriggers
+@onready var doors_node:    Node2D    = $Doors
 @onready var contents:      Node2D    = $Contents
 
 # ---------------------------------------------------------------------------
@@ -73,12 +75,13 @@ func setup(room_data: RoomData, floor_ref: Node) -> void:
 	_apply_floor_color()
 	_build_walls()
 	_build_door_triggers()
+	_build_physical_doors()
 
 # ---------------------------------------------------------------------------
 # Activate — called on first (and repeat) entry
 # ---------------------------------------------------------------------------
 func activate() -> void:
-	EventBus.room_entered.emit(data.id if "id" in data else "")
+	EventBus.room_entered.emit(data.id)
 	if data.visited:
 		_update_door_locks()
 		return
@@ -228,6 +231,35 @@ func _on_door_entered(body: Node, direction: String) -> void:
 		)
 
 # ---------------------------------------------------------------------------
+# Physical doors with lock barriers and indicator lights
+# ---------------------------------------------------------------------------
+func _build_physical_doors() -> void:
+	const DOOR_THICKNESS := 12.0
+	var hw := ROOM_W / 2.0
+	var hh := ROOM_H / 2.0
+
+	# Door positions and sizes per direction
+	var configs := {
+		"up":    {"pos": Vector2(0, -hh + WALL_T / 2.0), "size": Vector2(DOOR_W, DOOR_THICKNESS)},
+		"down":  {"pos": Vector2(0, hh - WALL_T / 2.0),  "size": Vector2(DOOR_W, DOOR_THICKNESS)},
+		"left":  {"pos": Vector2(-hw + WALL_T / 2.0, 0), "size": Vector2(DOOR_THICKNESS, DOOR_H)},
+		"right": {"pos": Vector2(hw - WALL_T / 2.0, 0),  "size": Vector2(DOOR_THICKNESS, DOOR_H)},
+	}
+
+	for dir in data.connections.keys():
+		var cfg = configs[dir]
+		var adj_grid: Vector2i = data.connections[dir]
+		var adj_type: int = _floor.get_room_type_at(adj_grid)
+		if adj_type < 0:
+			adj_type = RoomData.RoomType.COMBAT  # fallback
+
+		var door := RoomDoor.new()
+		door.position = cfg["pos"]
+		door.setup(dir, cfg["size"], adj_type as RoomData.RoomType)
+		doors_node.add_child(door)
+		_physical_doors[dir] = door
+
+# ---------------------------------------------------------------------------
 # Enemy spawning
 # ---------------------------------------------------------------------------
 
@@ -284,7 +316,7 @@ func _on_enemy_died() -> void:
 			_spawn_body_part_drop()
 			_spawn_floor_exit()
 		room_cleared.emit()
-		EventBus.room_cleared.emit(data.id if "id" in data else "")
+		EventBus.room_cleared.emit(data.id)
 		_update_door_locks()
 
 
@@ -512,5 +544,14 @@ func _update_door_locks() -> void:
 	var is_combat := data.type == RoomData.RoomType.COMBAT \
 				  or data.type == RoomData.RoomType.BOSS
 	var locked := data.visited and not data.cleared and is_combat
+
+	# Update door triggers (for transitions)
 	for area in _doors.values():
 		(area as Area2D).monitoring = not locked
+
+	# Update physical door barriers
+	for door in _physical_doors.values():
+		if locked:
+			door.lock()
+		else:
+			door.unlock()

@@ -90,3 +90,11 @@ func _entry_offset(from_direction: String) -> Vector2:
 # ---------------------------------------------------------------------------
 func _grid_to_world(grid_pos: Vector2i) -> Vector2:
 	return Vector2(grid_pos.x * ROOM_W, grid_pos.y * ROOM_H)
+
+
+# Returns the RoomData.RoomType for the room at the given grid position.
+# Returns -1 if no room exists at that position.
+func get_room_type_at(grid_pos: Vector2i) -> int:
+	if _rooms.has(grid_pos):
+		return _rooms[grid_pos].data.type
+	return -1

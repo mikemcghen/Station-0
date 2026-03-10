@@ -2,6 +2,7 @@ class_name RoomData
 
 enum RoomType { START, COMBAT, ITEM, SHOP, BOSS }
 
+var id:          String     = ""   # unique identifier (e.g., "5_5" from grid pos)
 var type:        RoomType   = RoomType.COMBAT
 var grid_pos:    Vector2i   = Vector2i.ZERO
 var connections: Dictionary = {}   # "up"/"down"/"left"/"right" -> Vector2i

@@ -3,9 +3,9 @@ class_name FloorGenerator
 const GRID_START := Vector2i(5, 5)
 
 const FLOOR_ROOM_COUNTS := {
-	1: {"min": 5, "max": 6},   # 4-5 combat + start + boss
-	2: {"min": 6, "max": 7},   # 5-6 combat + start + boss
-	3: {"min": 3, "max": 4},   # 2-3 combat + start + boss
+	1: {"min": 8, "max": 9},   # 4-5 combat + start + boss + item + shop
+	2: {"min": 9, "max": 10},  # 5-6 combat + start + boss + item + shop
+	3: {"min": 6, "max": 7},   # 2-3 combat + start + boss + item + shop
 }
 
 const DIRS := {
@@ -29,6 +29,7 @@ static func generate(floor_number: int) -> Array:
 	var start := RoomData.new()
 	start.type     = RoomData.RoomType.START
 	start.grid_pos = GRID_START
+	start.id       = "%d_%d" % [GRID_START.x, GRID_START.y]
 	rooms[GRID_START] = start
 
 	var queue:  Array = [GRID_START]
@@ -59,6 +60,7 @@ static func generate(floor_number: int) -> Array:
 			var r := RoomData.new()
 			r.type     = RoomData.RoomType.COMBAT
 			r.grid_pos = next
+			r.id       = "%d_%d" % [next.x, next.y]
 			rooms[next] = r
 			queue.append(next)
 
