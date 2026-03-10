@@ -30,7 +30,7 @@ const PROJ_SIZE      := 12.0
 
 const HOMING_COUNT_P1    := 4
 const HOMING_COUNT_P2    := 6
-const HOMING_SPEED       := 100.0
+const HOMING_SPEED       := 140.0
 const HOMING_TURN_SPEED  := 1.8   # radians per second
 const HOMING_DELAY       := 0.3   # delay after radial burst before homing fires
 const HOMING_LIFETIME    := 7.0   # seconds before homing projectiles expire

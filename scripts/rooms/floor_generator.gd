@@ -1,8 +1,12 @@
 class_name FloorGenerator
 
 const GRID_START := Vector2i(5, 5)
-const MIN_ROOMS  := 8
-const MAX_ROOMS  := 12
+
+const FLOOR_ROOM_COUNTS := {
+	1: {"min": 5, "max": 6},   # 4-5 combat + start + boss
+	2: {"min": 6, "max": 7},   # 5-6 combat + start + boss
+	3: {"min": 3, "max": 4},   # 2-3 combat + start + boss
+}
 
 const DIRS := {
 	"up":    Vector2i( 0, -1),
@@ -28,7 +32,8 @@ static func generate(floor_number: int) -> Array:
 	rooms[GRID_START] = start
 
 	var queue:  Array = [GRID_START]
-	var target: int   = rng.randi_range(MIN_ROOMS, MAX_ROOMS)
+	var counts: Dictionary = FLOOR_ROOM_COUNTS.get(floor_number, {"min": 5, "max": 6})
+	var target: int   = rng.randi_range(counts["min"], counts["max"])
 
 	# --- Random walk ---
 	while rooms.size() < target and queue.size() > 0:

@@ -53,7 +53,7 @@ const BEAM_WIDTH       := 28.0
 const PULSE_FORCE      := 350.0
 const PULSE_CD         := 5.0
 const HOMING_COUNT     := 4
-const HOMING_SPEED     := 80.0
+const HOMING_SPEED     := 120.0
 const HOMING_TURN      := 1.8   # rad/sec
 const HOMING_LIFETIME  := 7.0   # seconds before homing projectiles expire
 
