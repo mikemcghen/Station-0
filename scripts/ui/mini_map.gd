@@ -4,10 +4,15 @@ extends Control
 # Layout constants
 # ---------------------------------------------------------------------------
 const MAP_SIZE := Vector2(150, 150)
-const ROOM_SIZE := Vector2(18, 10)   # 16:9 aspect ratio like actual rooms
+const ROOM_SIZE := Vector2(26, 15)   # 16:9 aspect ratio like actual rooms
 const ROOM_GAP := 4.0
 const PADDING := 10.0
 const CONNECTION_WIDTH := 2.0
+const PARALLAX_STRENGTH := 4.0   # max pixels the map shifts with player movement
+
+# Room dimensions (must match floor.gd)
+const ROOM_W := 960.0
+const ROOM_H := 540.0
 
 # ---------------------------------------------------------------------------
 # Colors (brightened versions of room.gd floor colors)
@@ -31,6 +36,8 @@ var _rooms_data: Dictionary = {}   # Vector2i -> RoomData
 var _current_pos: Vector2i = Vector2i.ZERO
 var _grid_min: Vector2i = Vector2i.ZERO
 var _grid_max: Vector2i = Vector2i.ZERO
+var _parallax_offset: Vector2 = Vector2.ZERO
+var _player: Node2D = null
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -68,7 +75,33 @@ func _on_room_entered(grid_pos: Vector2i) -> void:
 
 func _on_run_ended(_reached_hub: bool) -> void:
 	_rooms_data.clear()
+	_player = null
 	queue_redraw()
+
+
+func _process(_delta: float) -> void:
+	if _rooms_data.is_empty():
+		return
+
+	# Find player if not cached
+	if _player == null:
+		_player = get_tree().get_first_node_in_group("player")
+		if _player == null:
+			return
+
+	# Calculate player position within current room (-0.5 to 0.5 range)
+	var room_center := Vector2(_current_pos.x * ROOM_W, _current_pos.y * ROOM_H)
+	var local_pos := _player.global_position - room_center
+	var normalized := Vector2(
+		clampf(local_pos.x / (ROOM_W * 0.5), -1.0, 1.0),
+		clampf(local_pos.y / (ROOM_H * 0.5), -1.0, 1.0)
+	)
+
+	# Apply subtle parallax (inverted so map moves opposite to player)
+	var new_offset := -normalized * PARALLAX_STRENGTH
+	if not new_offset.is_equal_approx(_parallax_offset):
+		_parallax_offset = new_offset
+		queue_redraw()
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -120,8 +153,8 @@ func _grid_to_map_pos(grid_pos: Vector2i) -> Vector2:
 	var grid_size := Vector2i(_grid_max.x - _grid_min.x + 1, _grid_max.y - _grid_min.y + 1)
 	var total_size := Vector2(grid_size.x, grid_size.y) * cell_size - Vector2(ROOM_GAP, ROOM_GAP)
 
-	# Center the map within the control
-	var centering := (MAP_SIZE - total_size) / 2.0
+	# Center the map within the control, apply parallax offset
+	var centering := (MAP_SIZE - total_size) / 2.0 + _parallax_offset
 	var offset := Vector2(
 		(grid_pos.x - _grid_min.x) * cell_size.x,
 		(grid_pos.y - _grid_min.y) * cell_size.y

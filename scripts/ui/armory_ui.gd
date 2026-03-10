@@ -107,11 +107,29 @@ func open() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Default body parts (always available)
+# ---------------------------------------------------------------------------
+const DEFAULT_PARTS: Array[String] = [
+	"res://data/body_parts/head_default.tres",
+	"res://data/body_parts/torso_default.tres",
+	"res://data/body_parts/left_arm_default.tres",
+	"res://data/body_parts/right_arm_default.tres",
+	"res://data/body_parts/legs_default.tres",
+]
+
+# ---------------------------------------------------------------------------
 # Rebuild item list from UpgradeManager
 # ---------------------------------------------------------------------------
 func _rebuild_items() -> void:
 	_items.clear()
 
+	# Add default parts first (always available)
+	for path: String in DEFAULT_PARTS:
+		var part := load(path) as BodyPartData
+		if part:
+			_items.append(part)
+
+	# Add acquired parts
 	for path: String in UpgradeManager.acquired_part_paths:
 		if path == "":
 			continue
@@ -140,7 +158,9 @@ func _refresh_labels() -> void:
 	for i in _item_labels.size():
 		var part: BodyPartData    = _items[i]
 		var equipped_path: String = UpgradeManager.equipped_parts.get(part.slot, "")
-		var is_equipped           := equipped_path == part.resource_path
+		# Check if this part is equipped (empty string means default is equipped)
+		var is_default_part       := part.resource_path in DEFAULT_PARTS
+		var is_equipped           := equipped_path == part.resource_path or (equipped_path == "" and is_default_part)
 		var is_cursor             := i == _cursor
 
 		var slot_tag   := "[%s]" % part.slot.to_upper()

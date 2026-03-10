@@ -19,13 +19,13 @@ const ORBIT_SPEED_P1 := 0.55    # rad/sec ≈ 31 deg/sec
 const ORBIT_SPEED_P2 := 0.85    # rad/sec ≈ 49 deg/sec
 
 const TELEGRAPH_TIME := 0.8
-const PASS_DELAY     := 1.2
+const PASS_DELAY     := 1.8
 
 const SWEEP_SPEED_P1 := 50.0
 const SWEEP_SPEED_P2 := 85.0
 const SWEEP_CD_P1    := 6.5
 const SWEEP_CD_P2    := 4.5
-const PROJ_SPACING   := 26.0
+const PROJ_SPACING   := 18.0
 const GAP_W          := 90.0
 
 const MINE_CD_P1     := 4.0

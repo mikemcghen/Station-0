@@ -55,6 +55,7 @@ var _mini_map: Control
 func _ready() -> void:
 	EventBus.player_health_changed.connect(_on_health_changed)
 	EventBus.credits_changed.connect(_on_credits_changed)
+	EventBus.save_loaded.connect(_on_save_loaded)
 	# DEPRECATED — Boss bar signal connections (commented out)
 	#EventBus.boss_health_changed.connect(_on_boss_health_changed)
 	#EventBus.boss_died.connect(_on_boss_died)
@@ -138,6 +139,10 @@ func _build_mini_map() -> void:
 
 func _on_credits_changed(new_total: int) -> void:
 	_credits_label.text = "SCRAP: %d" % new_total
+
+func _on_save_loaded() -> void:
+	var amount := RunManager.run_credits if RunManager.run_active else UpgradeManager.wallet_credits
+	_credits_label.text = "SCRAP: %d" % amount
 
 # ---------------------------------------------------------------------------
 # Signal handler
