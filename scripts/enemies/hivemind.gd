@@ -28,14 +28,12 @@ const TELEPORT_CD_MAX  := 7.0
 const FADE_OUT_TIME    := 0.15
 const TRANSIT_TIME     := 0.5
 
-# Orbiting projectiles
-const ORBIT_MAX        := 6
+# Orbiting projectiles (6 static orbiters, no decay)
+const ORBIT_COUNT      := 6
 const ORBIT_RADIUS     := 60.0
 const ORBIT_SPEED      := 2.0   # rad/sec
 const ORBIT_PROJ_SIZE  := 10.0
 const ORBIT_TRANSITION_SPEED := 200.0  # how fast orbiters follow after teleport
-const ORBIT_DECAY_TIME := 6.0   # orbiters fade after this time
-const ORBIT_REPLENISH_CD := 2.0  # spawn a new orbiter every X seconds
 
 # Sweep attack (from Warden)
 const SWEEP_CD         := 4.5
@@ -90,9 +88,8 @@ var _fade_timer:      float = 0.0
 var _transit_timer:   float = 0.0
 
 # Orbiting projectiles
-var _orbiters:        Array[Dictionary] = []  # {node, angle, age, transitioning}
+var _orbiters:        Array[Dictionary] = []  # {node, angle, transitioning}
 var _orbit_angle:     float = 0.0
-var _orbit_replenish_timer: float = 2.0
 
 # Sweep attack
 var _sweep_timer:     float = 3.0
@@ -138,17 +135,16 @@ func _ready() -> void:
 	_core_visual.visible = false   # hidden during assembly
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
-	# During assembly: disable contact area and player collision
-	# Only collide with walls (layer 1) to avoid "attaching" to player
+	# During assembly: disable all collision (no hitbox until boss appears)
 	if _contact_area:
 		_contact_area.monitoring = false
 		_contact_area.monitorable = false
-		_contact_area.scale = Vector2(_core_scale, _core_scale)
 	if _collision_shape:
-		_collision_shape.scale = Vector2(_core_scale, _core_scale)
+		_collision_shape.disabled = true
 
-	# Disable player collision during assembly (mask 1 = walls only, not 3 = walls+player)
-	collision_mask = 1
+	# Never collide with player via CharacterBody2D - use Area2D for contact damage only
+	# This prevents the "attach" bug where player pushes boss around
+	collision_mask = 1  # walls only
 
 
 func _physics_process(delta: float) -> void:
@@ -296,16 +292,20 @@ func _grow_core() -> void:
 	var growth_per_kill := 0.7 / float(total_enemies)  # grows from 0.3 to 1.0
 	_core_scale = minf(_core_scale + growth_per_kill, 1.0)
 
-	# Show core once it starts growing
+	# Show core once it starts growing, and enable scaled collision
 	if not _core_visual.visible:
 		_core_visual.visible = true
+		# Enable collision now that visual is appearing
+		if _collision_shape:
+			_collision_shape.disabled = false
+
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
-	# Scale collision shapes to match visual
-	if _contact_area:
-		_contact_area.scale = Vector2(_core_scale, _core_scale)
+	# Scale collision to match visual
 	if _collision_shape:
 		_collision_shape.scale = Vector2(_core_scale, _core_scale)
+	if _contact_area:
+		_contact_area.scale = Vector2(_core_scale, _core_scale)
 
 
 func _enter_active() -> void:
@@ -313,22 +313,20 @@ func _enter_active() -> void:
 	_core_visual.visible = true
 	_core_visual.scale = Vector2(1.0, 1.0)
 
-	# Enable contact area and scale up collision
+	# Enable contact area for damage detection (Area2D handles player contact)
 	if _contact_area:
 		_contact_area.monitoring = true
 		_contact_area.monitorable = true
 		_contact_area.scale = Vector2(1.0, 1.0)
 	if _collision_shape:
+		_collision_shape.disabled = false
 		_collision_shape.scale = Vector2(1.0, 1.0)
-
-	# Re-enable player collision (mask 3 = walls + player)
-	collision_mask = 3
+	# Keep collision_mask = 1 (walls only) to prevent "attach" bug
 
 	_teleport_timer = 2.0
 	_sweep_timer = 3.0
-	_orbit_replenish_timer = ORBIT_REPLENISH_CD
 
-	# Spawn orbiting projectiles
+	# Spawn 6 static orbiting projectiles
 	_spawn_orbiters()
 
 	# Emit boss health bar start
@@ -425,19 +423,17 @@ func _roll_teleport_cooldown() -> void:
 # Orbiting Projectiles
 # ---------------------------------------------------------------------------
 func _spawn_orbiters() -> void:
-	# Start with a few orbiters
-	for i in 4:
-		var angle := TAU * i / 4.0
+	# Spawn 6 static orbiters evenly spaced
+	for i in ORBIT_COUNT:
+		var angle := TAU * i / float(ORBIT_COUNT)
 		var orb := _create_orbiter(angle)
 		_orbiters.append(orb)
-	_orbit_replenish_timer = ORBIT_REPLENISH_CD
 
 
 func _create_orbiter(angle: float) -> Dictionary:
 	var proj := Node2D.new()
 
 	var poly := Polygon2D.new()
-	poly.name = "Poly"
 	var hs := ORBIT_PROJ_SIZE * 0.5
 	poly.polygon = PackedVector2Array([
 		Vector2(-hs, -hs), Vector2(hs, -hs),
@@ -460,7 +456,7 @@ func _create_orbiter(angle: float) -> Dictionary:
 	get_parent().add_child(proj)
 	proj.global_position = global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
 
-	return {"node": proj, "angle": angle, "age": 0.0, "transitioning": false}
+	return {"node": proj, "angle": angle, "transitioning": false}
 
 
 func _on_orbiter_hit(body: Node, _proj: Node2D) -> void:
@@ -474,31 +470,17 @@ func _tick_orbiters(delta: float) -> void:
 
 	_orbit_angle += ORBIT_SPEED * delta
 
-	# Decay and orbit movement
-	var still_valid: Array[Dictionary] = []
+	# Simple orbit movement (no decay)
 	for orb in _orbiters:
 		var node: Node2D = orb["node"]
 		if not is_instance_valid(node):
 			continue
 
-		# Age and decay
-		orb["age"] += delta
-		if orb["age"] >= ORBIT_DECAY_TIME:
-			node.queue_free()
-			continue
-
-		# Fade visual as it ages
-		var age_val: float = orb["age"]
-		var fade: float = 1.0 - (age_val / ORBIT_DECAY_TIME) * 0.5
-		var poly := node.get_node_or_null("Poly") as Polygon2D
-		if poly:
-			poly.color = Color(0.6, 0.3, 0.7, fade)
-
 		var angle: float = orb["angle"] + _orbit_angle
 		var target_pos := global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
 
 		if orb["transitioning"]:
-			# Move toward target position
+			# Move toward target position after teleport
 			var dir := (target_pos - node.global_position).normalized()
 			var dist := node.global_position.distance_to(target_pos)
 			if dist < ORBIT_TRANSITION_SPEED * delta:
@@ -509,25 +491,6 @@ func _tick_orbiters(delta: float) -> void:
 		else:
 			# Normal orbit
 			node.global_position = target_pos
-
-		still_valid.append(orb)
-
-	_orbiters = still_valid
-
-	# Replenish orbiters
-	if _orbiters.size() < ORBIT_MAX:
-		_orbit_replenish_timer -= delta
-		if _orbit_replenish_timer <= 0.0:
-			_replenish_orbiter()
-			_orbit_replenish_timer = ORBIT_REPLENISH_CD
-
-
-func _replenish_orbiter() -> void:
-	# Find an angle that's not too close to existing orbiters
-	var new_angle := randf() * TAU
-	var orb := _create_orbiter(new_angle)
-	orb["transitioning"] = true  # fly in from boss position
-	_orbiters.append(orb)
 
 
 func _clear_orbiters() -> void:
