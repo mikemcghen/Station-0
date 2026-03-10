@@ -8,14 +8,19 @@ const DOOR_THICKNESS := 12.0
 const INDICATOR_SIZE := 10.0
 const INDICATOR_OFFSET := 20.0  # distance above door
 
-# Indicator light colors (brighter versions of room floor colors)
+# Indicator light colors - only for special rooms, matching floor colors but brighter
 const INDICATOR_COLORS := {
-	RoomData.RoomType.START:  Color(0.3, 0.3, 0.5),   # blue-gray
-	RoomData.RoomType.COMBAT: Color(0.35, 0.35, 0.55), # blue-gray
-	RoomData.RoomType.ITEM:   Color(0.2, 0.5, 0.2),   # green
-	RoomData.RoomType.SHOP:   Color(0.6, 0.45, 0.2),  # gold/amber
-	RoomData.RoomType.BOSS:   Color(0.7, 0.15, 0.15), # red
+	RoomData.RoomType.ITEM:   Color(0.2, 0.45, 0.2),   # green (brighter version of 0.10, 0.16, 0.10)
+	RoomData.RoomType.SHOP:   Color(0.9, 0.75, 0.1),   # yellow
+	RoomData.RoomType.BOSS:   Color(0.7, 0.15, 0.15),  # red (brighter version of 0.20, 0.08, 0.08)
 }
+
+# Room types that should show indicator lights
+const SPECIAL_ROOM_TYPES := [
+	RoomData.RoomType.ITEM,
+	RoomData.RoomType.SHOP,
+	RoomData.RoomType.BOSS,
+]
 
 # ---------------------------------------------------------------------------
 # State
@@ -71,6 +76,10 @@ func _build_barrier() -> void:
 
 
 func _build_indicator() -> void:
+	# Only show indicators for special rooms (ITEM, SHOP, BOSS)
+	if adjacent_room_type not in SPECIAL_ROOM_TYPES:
+		return
+
 	_indicator = Polygon2D.new()
 
 	# Small diamond shape for indicator
@@ -89,7 +98,7 @@ func _build_indicator() -> void:
 		"right": offset = Vector2(door_size.x / 2.0 + INDICATOR_OFFSET, 0)
 
 	_indicator.position = offset
-	_indicator.color = INDICATOR_COLORS.get(adjacent_room_type, INDICATOR_COLORS[RoomData.RoomType.COMBAT])
+	_indicator.color = INDICATOR_COLORS[adjacent_room_type]
 
 	add_child(_indicator)
 

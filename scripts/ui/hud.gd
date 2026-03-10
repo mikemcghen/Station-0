@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const MiniMapScript = preload("res://scripts/ui/mini_map.gd")
+
 # ---------------------------------------------------------------------------
 # Heart geometry — two polygons per slot: background (dark) + fill (red)
 # ---------------------------------------------------------------------------
@@ -39,6 +41,7 @@ const ORIGIN        := Vector2(32, 32)   # center of first heart (screen px)
 # Each entry: { "bg": Polygon2D, "fill": Polygon2D }
 var _slots: Array = []
 var _credits_label: Label
+var _mini_map: Control
 
 # DEPRECATED — Boss bar nodes (commented out)
 #var _boss_bar_root:  Node2D    = null
@@ -56,6 +59,7 @@ func _ready() -> void:
 	#EventBus.boss_health_changed.connect(_on_boss_health_changed)
 	#EventBus.boss_died.connect(_on_boss_died)
 	_build_credits_label()
+	_build_mini_map()
 	# Initialise once the scene is fully set up
 	call_deferred("_init_from_player")
 
@@ -125,6 +129,12 @@ func _build_credits_label() -> void:
 	var amount := RunManager.run_credits if RunManager.run_active else UpgradeManager.wallet_credits
 	_credits_label.text     = "SCRAP: %d" % amount
 	add_child(_credits_label)
+
+
+func _build_mini_map() -> void:
+	_mini_map = Control.new()
+	_mini_map.set_script(MiniMapScript)
+	add_child(_mini_map)
 
 func _on_credits_changed(new_total: int) -> void:
 	_credits_label.text = "SCRAP: %d" % new_total

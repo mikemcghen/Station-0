@@ -20,6 +20,7 @@ const ENTRY_INSET     := 60.0    # how far from wall edge the player appears
 # State
 # ---------------------------------------------------------------------------
 var _rooms:           Dictionary = {}   # Vector2i -> Room
+var _rooms_data:      Dictionary = {}   # Vector2i -> RoomData (for mini map)
 var _current_grid:    Vector2i
 var _transitioning:   bool = false
 
@@ -40,6 +41,7 @@ func _build_floor(floor_data: Array) -> void:
 		rooms_container.add_child(room_node)
 		room_node.setup(room_data, self)
 		_rooms[room_data.grid_pos] = room_node
+		_rooms_data[room_data.grid_pos] = room_data
 
 		if room_data.type == RoomData.RoomType.START:
 			start_pos = room_data.grid_pos
@@ -51,6 +53,10 @@ func _build_floor(floor_data: Array) -> void:
 	_current_grid          = start_pos
 	_rooms[start_pos].activate()
 
+	# Emit signals for mini map
+	EventBus.floor_map_ready.emit(_rooms_data)
+	EventBus.room_entered_at.emit(start_pos)
+
 # ---------------------------------------------------------------------------
 # Transitions
 # ---------------------------------------------------------------------------
@@ -59,6 +65,7 @@ func transition_to(target_grid: Vector2i, from_direction: String) -> void:
 		return
 	_transitioning    = true
 	_current_grid     = target_grid
+	EventBus.room_entered_at.emit(target_grid)
 
 	var new_world := _grid_to_world(target_grid)
 

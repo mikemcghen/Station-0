@@ -15,6 +15,8 @@ signal floor_cleared(floor_number: int)
 signal room_entered(room_id: String)
 signal room_cleared(room_id: String)
 signal room_revealed
+signal room_entered_at(grid_pos: Vector2i)
+signal floor_map_ready(rooms_data: Dictionary)
 
 # ---------------------------------------------------------------------------
 # Items & Loot
