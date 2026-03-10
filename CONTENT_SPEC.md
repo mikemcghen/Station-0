@@ -43,7 +43,7 @@ All enemies are corrupted Adaptive Maintenance Units — same chassis class as t
 
 A containment unit whose crowd-control protocol has turned inward — it is now attempting to contain the entire room, including the player. Slow and methodical. The room itself becomes the threat.
 
-**Room**: Large. No environmental hazards on entry. Preceded by a charging station (full HP restore before entry).
+**Room**: Large. No environmental hazards on entry.
 
 ### Movement
 Patrols the room perimeter in a slow, continuous circuit. Never crosses the center. Fully predictable path — the danger comes from what it leaves behind, not from the boss itself.
@@ -64,7 +64,7 @@ Drops a stationary proximity mine at its current patrol position each cycle. Min
 
 A communications hub unit whose broadcast function corrupted into something aggressive. Erratic, unpredictable positioning. Forces the player to stay mobile and read the room constantly.
 
-**Room**: Large. No environmental hazards on entry. Preceded by a charging station (full HP restore before entry).
+**Room**: Large. No environmental hazards on entry.
 
 ### Movement
 Anchors near room center but teleports to a random position every 8–10 seconds. No warning before teleport — position resets without notice. Punishes clustering near the boss.
@@ -85,7 +85,7 @@ Periodically broadcasts a signal that summons 2–3 Drifters. Not full waves —
 
 What the corruption becomes when it fully realizes itself. Individual units lose their original purpose and merge into a single machine that was never meant to exist.
 
-**Room**: Large. Largest boss room in the run. Preceded by a charging station (full HP restore before entry).
+**Room**: Large. Largest boss room in the run.
 
 ### Phase 1 — Assembly
 No central target yet. Corrupted units flood the room in waves — Drifters, Repeaters, Anchors. As each one dies, it is pulled toward the center and physically joins the assembling structure (visual indicator builds up). Player must clear everything they've learned across floors 1 and 2 simultaneously, under pressure. The Hivemind core cannot be damaged during this phase.
@@ -205,7 +205,7 @@ One item on a pedestal. No enemies. Safe. 20% chance to also contain a lore term
 Unmanned. No NPC keeper. Sells 2 items + 1 consumable at fixed scrap prices. No haggling. Purely transactional — all NPC personality lives in the hub.
 
 **Boss room**
-One boss per floor. Each preceded by a charging station room (no enemies, full HP restore). Boss rooms are the largest rooms in the run.
+One boss per floor. Boss rooms are the largest rooms in the run. No boss health bar — player reads boss state through visual phase transitions and the climax (blinking/dying) phase. Keeps tension high and encourages reading the fight, not the UI.
 
 | Floor | Boss |
 |---|---|
@@ -237,7 +237,7 @@ Both hazard types included in VS.
 |---|---|---|
 | Floor 1 | 4–5 rooms + boss | Learn the rhythm. One item. Maybe find the shop. First Repeater feels like a puzzle. Warden fight — room fills with mines, learn to manage space. |
 | Floor 2 | 5–6 rooms + boss | Mixed threats. Find a body part. Build takes shape. One tense near-death moment. Relay fight — erratic, keeps moving, adds split focus. |
-| Floor 3 | 2–3 rooms + boss | Room composition tightens. Anchors in tighter spaces. Charging station. Hivemind — three phases, everything converges. Victory. |
+| Floor 3 | 2–3 rooms + boss | Room composition tightens. Anchors in tighter spaces. Hivemind — three phases, everything converges. Victory. |
 
 **Target run time**: 20–30 minutes.
 

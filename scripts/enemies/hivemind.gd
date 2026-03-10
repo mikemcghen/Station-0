@@ -138,13 +138,13 @@ func _ready() -> void:
 	_core_visual.visible = false   # hidden during assembly
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
-	# Disable and scale down collision during assembly
+	# Scale down collision during assembly (contact area disabled, but hitbox active for projectiles)
 	if _contact_area:
 		_contact_area.monitoring = false
 		_contact_area.monitorable = false
 		_contact_area.scale = Vector2(_core_scale, _core_scale)
 	if _collision_shape:
-		_collision_shape.disabled = true
+		# Keep hitbox enabled but scaled - boss is invulnerable during assembly via take_damage()
 		_collision_shape.scale = Vector2(_core_scale, _core_scale)
 
 
@@ -310,13 +310,12 @@ func _enter_active() -> void:
 	_core_visual.visible = true
 	_core_visual.scale = Vector2(1.0, 1.0)
 
-	# Enable and scale up collision
+	# Enable contact area and scale up collision
 	if _contact_area:
 		_contact_area.monitoring = true
 		_contact_area.monitorable = true
 		_contact_area.scale = Vector2(1.0, 1.0)
 	if _collision_shape:
-		_collision_shape.disabled = false
 		_collision_shape.scale = Vector2(1.0, 1.0)
 
 	_teleport_timer = 2.0
