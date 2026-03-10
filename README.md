@@ -31,8 +31,7 @@ Top-down combat across six ecological zones of the station (Botanical, Aquatic, 
 Key mechanic: **early exit**. At any point in a run, the player can abandon and return to the hub, keeping everything found so far. The risk/reward tension is active the entire run, not just at the start.
 
 ### Card Game
-A deck-based TCG with auto-battler combat resolution, played in the hub cafeteria against rescued NPC robots. No in-match shop — the strategic layer lives in deck construction and hand management. Cards represent species that once lived on the planet. Each zone has its own card series. The robots who built these cards were grieving. The player inherits that grief without knowing it.
-
+A deck-based TCG with auto-battler combat resolution, played in the hub cafeteria against rescued NPC robots. No in-match shop — the strategic layer lives in deck construction and hand management. Cards represent species that once lived on the planet. Each zone has its own card series. The robots who built these cards did so out of endearment.
 ---
 
 ## Emotional foundation
