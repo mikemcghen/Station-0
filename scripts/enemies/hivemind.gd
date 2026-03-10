@@ -442,7 +442,7 @@ func _create_orbiter(angle: float) -> Dictionary:
 	return {"node": proj, "angle": angle, "age": 0.0, "transitioning": false}
 
 
-func _on_orbiter_hit(body: Node, proj: Node2D) -> void:
+func _on_orbiter_hit(body: Node, _proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
 		body.take_damage(1.0)
 
@@ -582,11 +582,14 @@ func _tick_sweep_projs(delta: float) -> void:
 	var still_valid: Array[Dictionary] = []
 
 	for p in _sweep_projs:
+		if not p.has("node"):
+			continue
 		var node: Node2D = p["node"]
 		if not is_instance_valid(node):
 			continue
 
-		node.global_position += p["vel"] * delta
+		var vel: Vector2 = p["vel"]
+		node.global_position += vel * delta
 
 		# Bounds check
 		if absf(node.global_position.y - _room_center.y) > ROOM_HH + 30.0:
