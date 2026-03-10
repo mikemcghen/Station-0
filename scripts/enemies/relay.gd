@@ -32,7 +32,8 @@ const HOMING_COUNT_P1    := 4
 const HOMING_COUNT_P2    := 6
 const HOMING_SPEED       := 100.0
 const HOMING_TURN_SPEED  := 1.8   # radians per second
-const HOMING_DELAY       := 0.3  # delay after radial burst before homing fires
+const HOMING_DELAY       := 0.3   # delay after radial burst before homing fires
+const HOMING_LIFETIME    := 4.0   # seconds before homing projectiles expire
 
 const DRIFTER_SPAWN_MIN := 2
 const DRIFTER_SPAWN_MAX := 4
@@ -267,6 +268,7 @@ func _fire_homing() -> void:
 func _spawn_homing_proj(start_angle: float) -> void:
 	var proj := Node2D.new()
 	proj.set_meta("angle", start_angle)
+	proj.set_meta("age", 0.0)
 
 	# Diamond shape visual
 	var poly := Polygon2D.new()
@@ -306,6 +308,13 @@ func _tick_homing_projs(delta: float) -> void:
 
 	for proj in _homing_projs:
 		if not is_instance_valid(proj):
+			continue
+
+		# Age check
+		var age: float = proj.get_meta("age") + delta
+		proj.set_meta("age", age)
+		if age >= HOMING_LIFETIME:
+			proj.queue_free()
 			continue
 
 		var angle: float = proj.get_meta("angle")

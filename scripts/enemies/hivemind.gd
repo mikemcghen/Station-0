@@ -29,11 +29,13 @@ const FADE_OUT_TIME    := 0.15
 const TRANSIT_TIME     := 0.5
 
 # Orbiting projectiles
-const ORBIT_COUNT      := 6
+const ORBIT_MAX        := 6
 const ORBIT_RADIUS     := 60.0
 const ORBIT_SPEED      := 2.0   # rad/sec
 const ORBIT_PROJ_SIZE  := 10.0
 const ORBIT_TRANSITION_SPEED := 200.0  # how fast orbiters follow after teleport
+const ORBIT_DECAY_TIME := 6.0   # orbiters fade after this time
+const ORBIT_REPLENISH_CD := 2.0  # spawn a new orbiter every X seconds
 
 # Sweep attack (from Warden)
 const SWEEP_CD         := 4.5
@@ -53,6 +55,7 @@ const PULSE_CD         := 5.0
 const HOMING_COUNT     := 4
 const HOMING_SPEED     := 80.0
 const HOMING_TURN      := 1.8   # rad/sec
+const HOMING_LIFETIME  := 4.0   # seconds before homing projectiles expire
 
 const FREEZE_DURATION  := 2.0
 
@@ -68,9 +71,10 @@ var _room_center: Vector2
 
 # Assembly
 var _wave_index:       int   = 0
-var _wave_timer:       float = 2.0
-var _spawned_enemies:  Array[Node] = []
+var _wave_enemies:     Array[Node] = []  # enemies from current wave
+var _spawned_enemies:  Array[Node] = []  # all spawned enemies (for tracking)
 var _core_scale:       float = 0.3   # starts small, grows to 1.0
+var _wave_spawned:     bool  = false  # has current wave been spawned?
 
 # Core visual
 var _core_visual: Node2D = null
@@ -85,8 +89,9 @@ var _fade_timer:      float = 0.0
 var _transit_timer:   float = 0.0
 
 # Orbiting projectiles
-var _orbiters:        Array[Dictionary] = []  # {node, angle, target_pos}
+var _orbiters:        Array[Dictionary] = []  # {node, angle, age, transitioning}
 var _orbit_angle:     float = 0.0
+var _orbit_replenish_timer: float = 2.0
 
 # Sweep attack
 var _sweep_timer:     float = 3.0
@@ -208,12 +213,11 @@ func _on_contact_hit(body: Node) -> void:
 # ---------------------------------------------------------------------------
 # Phase 1 — Assembly
 # ---------------------------------------------------------------------------
-func _tick_assembly(delta: float) -> void:
-	_wave_timer -= delta
-	if _wave_timer <= 0.0 and _wave_index < WAVE_COUNT:
+func _tick_assembly(_delta: float) -> void:
+	# Spawn first wave immediately, subsequent waves after previous is cleared
+	if not _wave_spawned and _wave_index < WAVE_COUNT:
 		_spawn_wave()
-		_wave_index += 1
-		_wave_timer = WAVE_DELAY
+		_wave_spawned = true
 
 	# Check if assembly complete: all waves spawned AND all enemies dead
 	if _wave_index >= WAVE_COUNT and _spawned_enemies.size() == 0:
@@ -224,6 +228,8 @@ func _spawn_wave() -> void:
 	var scenes := [DRIFTER_SCENE, REPEATER_SCENE, ANCHOR_SCENE]
 	var hw := ROOM_HW - WALL_T - 80.0
 	var hh := ROOM_HH - WALL_T - 80.0
+
+	_wave_enemies.clear()
 
 	for i in ENEMIES_PER_WAVE:
 		var scene = scenes[randi() % scenes.size()]
@@ -240,16 +246,19 @@ func _spawn_wave() -> void:
 
 		# Track enemy for assembly phase
 		_spawned_enemies.append(enemy)
+		_wave_enemies.append(enemy)
 		enemy.tree_exited.connect(_on_enemy_died.bind(enemy), CONNECT_ONE_SHOT)
 
 
 func _on_enemy_died(enemy: Node) -> void:
 	if _phase != Phase.ASSEMBLY:
 		_spawned_enemies.erase(enemy)
+		_wave_enemies.erase(enemy)
 		return
 
-	# Remove from tracked list
+	# Remove from tracked lists
 	_spawned_enemies.erase(enemy)
+	_wave_enemies.erase(enemy)
 
 	# Create purple dot flying to center
 	var part := Polygon2D.new()
@@ -269,6 +278,11 @@ func _on_enemy_died(enemy: Node) -> void:
 	tw.tween_callback(_grow_core)
 	tw.tween_property(part, "modulate:a", 0.0, 0.2)
 	tw.tween_callback(part.queue_free)
+
+	# Check if wave is cleared — spawn next wave
+	if _wave_enemies.size() == 0 and _wave_index < WAVE_COUNT:
+		_wave_index += 1
+		_wave_spawned = false  # allow next wave to spawn
 
 
 func _grow_core() -> void:
@@ -295,6 +309,7 @@ func _enter_active() -> void:
 
 	_teleport_timer = 2.0
 	_sweep_timer = 3.0
+	_orbit_replenish_timer = ORBIT_REPLENISH_CD
 
 	# Spawn orbiting projectiles
 	_spawn_orbiters()
@@ -389,16 +404,19 @@ func _roll_teleport_cooldown() -> void:
 # Orbiting Projectiles
 # ---------------------------------------------------------------------------
 func _spawn_orbiters() -> void:
-	for i in ORBIT_COUNT:
-		var angle := TAU * i / float(ORBIT_COUNT)
+	# Start with a few orbiters
+	for i in 4:
+		var angle := TAU * i / 4.0
 		var orb := _create_orbiter(angle)
 		_orbiters.append(orb)
+	_orbit_replenish_timer = ORBIT_REPLENISH_CD
 
 
 func _create_orbiter(angle: float) -> Dictionary:
 	var proj := Node2D.new()
 
 	var poly := Polygon2D.new()
+	poly.name = "Poly"
 	var hs := ORBIT_PROJ_SIZE * 0.5
 	poly.polygon = PackedVector2Array([
 		Vector2(-hs, -hs), Vector2(hs, -hs),
@@ -421,7 +439,7 @@ func _create_orbiter(angle: float) -> Dictionary:
 	get_parent().add_child(proj)
 	proj.global_position = global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
 
-	return {"node": proj, "angle": angle, "transitioning": false}
+	return {"node": proj, "angle": angle, "age": 0.0, "transitioning": false}
 
 
 func _on_orbiter_hit(body: Node, proj: Node2D) -> void:
@@ -435,10 +453,24 @@ func _tick_orbiters(delta: float) -> void:
 
 	_orbit_angle += ORBIT_SPEED * delta
 
+	# Decay and orbit movement
+	var still_valid: Array[Dictionary] = []
 	for orb in _orbiters:
 		var node: Node2D = orb["node"]
 		if not is_instance_valid(node):
 			continue
+
+		# Age and decay
+		orb["age"] += delta
+		if orb["age"] >= ORBIT_DECAY_TIME:
+			node.queue_free()
+			continue
+
+		# Fade visual as it ages
+		var fade := 1.0 - (orb["age"] / ORBIT_DECAY_TIME) * 0.5
+		var poly := node.get_node_or_null("Poly") as Polygon2D
+		if poly:
+			poly.color = Color(0.6, 0.3, 0.7, fade)
 
 		var angle: float = orb["angle"] + _orbit_angle
 		var target_pos := global_position + Vector2.from_angle(angle) * ORBIT_RADIUS
@@ -455,6 +487,25 @@ func _tick_orbiters(delta: float) -> void:
 		else:
 			# Normal orbit
 			node.global_position = target_pos
+
+		still_valid.append(orb)
+
+	_orbiters = still_valid
+
+	# Replenish orbiters
+	if _orbiters.size() < ORBIT_MAX:
+		_orbit_replenish_timer -= delta
+		if _orbit_replenish_timer <= 0.0:
+			_replenish_orbiter()
+			_orbit_replenish_timer = ORBIT_REPLENISH_CD
+
+
+func _replenish_orbiter() -> void:
+	# Find an angle that's not too close to existing orbiters
+	var new_angle := randf() * TAU
+	var orb := _create_orbiter(new_angle)
+	orb["transitioning"] = true  # fly in from boss position
+	_orbiters.append(orb)
 
 
 func _clear_orbiters() -> void:
@@ -753,7 +804,7 @@ func _spawn_homing_proj(start_angle: float) -> void:
 	get_parent().add_child(proj)
 	proj.global_position = global_position + Vector2.from_angle(start_angle) * 30.0
 
-	_homing_projs.append({"node": proj, "angle": start_angle})
+	_homing_projs.append({"node": proj, "angle": start_angle, "age": 0.0})
 
 
 func _on_homing_hit(body: Node, proj: Node2D) -> void:
@@ -772,6 +823,12 @@ func _tick_homing_projs(delta: float) -> void:
 	for p in _homing_projs:
 		var node: Node2D = p["node"]
 		if not is_instance_valid(node):
+			continue
+
+		# Age check
+		p["age"] += delta
+		if p["age"] >= HOMING_LIFETIME:
+			node.queue_free()
 			continue
 
 		var angle: float = p["angle"]
@@ -863,6 +920,13 @@ func _die() -> void:
 		if is_instance_valid(p["node"]):
 			p["node"].queue_free()
 	_homing_projs.clear()
+
+	# Clear any remaining spawned enemies from assembly
+	for enemy in _spawned_enemies:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	_spawned_enemies.clear()
+	_wave_enemies.clear()
 
 	EventBus.boss_died.emit()
 	queue_free()
