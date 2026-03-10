@@ -46,8 +46,13 @@ signal card_game_ended(player_won: bool)
 # ---------------------------------------------------------------------------
 # Boss
 # ---------------------------------------------------------------------------
-signal boss_health_changed(current: float, maximum: float)
+signal boss_health_changed(current: float, maximum: float, boss_name: String)
 signal boss_died
+
+# ---------------------------------------------------------------------------
+# Practice Room Simulation
+# ---------------------------------------------------------------------------
+signal practice_player_died
 
 # ---------------------------------------------------------------------------
 # Perspective / View

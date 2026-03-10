@@ -207,7 +207,8 @@ func _die() -> void:
 	if RunManager.run_active:
 		RunManager.end_run(false)
 	else:
-		# In hub/practice — just heal to full instead of dying
+		# In hub/practice — signal for practice room handling, then heal
+		EventBus.practice_player_died.emit()
 		stats.heal(stats.max_health)
 
 # ---------------------------------------------------------------------------

@@ -33,7 +33,7 @@ const HOMING_COUNT_P2    := 6
 const HOMING_SPEED       := 100.0
 const HOMING_TURN_SPEED  := 1.8   # radians per second
 const HOMING_DELAY       := 0.3   # delay after radial burst before homing fires
-const HOMING_LIFETIME    := 4.0   # seconds before homing projectiles expire
+const HOMING_LIFETIME    := 7.0   # seconds before homing projectiles expire
 
 const DRIFTER_SPAWN_MIN := 2
 const DRIFTER_SPAWN_MAX := 4
@@ -364,7 +364,7 @@ func take_damage(amount: float) -> void:
 		return
 
 	current_health -= amount
-	EventBus.boss_health_changed.emit(current_health, max_health)
+	EventBus.boss_health_changed.emit(current_health, max_health, "THE RELAY")
 
 	if current_health <= 5.0 and _phase != Phase.CLIMAX:
 		_enter_climax()

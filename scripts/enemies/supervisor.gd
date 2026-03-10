@@ -316,7 +316,7 @@ func _fire_beam() -> void:
 func take_damage(amount: float) -> void:
 	current_health -= amount
 	_flash_timer = 0.1
-	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health)
+	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health, "THE SUPERVISOR")
 	if current_health <= 0.0:
 		_die()
 

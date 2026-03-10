@@ -143,4 +143,10 @@ func heal(amount: float) -> void:
 	current_health = minf(current_health + amount, max_health)
 
 func _on_part_equipped(_part: Resource, _slot: String) -> void:
+	var old_max := max_health
 	recalculate()
+	# If max_health increased, grant the extra HP immediately
+	if max_health > old_max:
+		current_health += (max_health - old_max)
+	# Update UI
+	EventBus.player_health_changed.emit(current_health, max_health)

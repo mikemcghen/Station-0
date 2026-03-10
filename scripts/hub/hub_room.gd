@@ -66,6 +66,8 @@ var _boss_prompts: Array[Label] = []
 var _practice_boss: Node2D = null
 var _practice_active: bool = false
 var _reset_prompt: Label = null
+var _status_popup: Label = null
+var _status_timer: float = 0.0
 
 # ---------------------------------------------------------------------------
 # Node refs
@@ -95,6 +97,18 @@ func setup(room_type: int, connections: Dictionary, hub_ref: Node) -> void:
 		_build_armory_workbench()
 	elif _type == HubRoomType.PRACTICE:
 		_build_practice_room()
+		# Connect simulation events
+		EventBus.practice_player_died.connect(_on_practice_player_died)
+		EventBus.boss_died.connect(_on_practice_boss_defeated)
+
+# ---------------------------------------------------------------------------
+# Process — handle status popup timer
+# ---------------------------------------------------------------------------
+func _process(delta: float) -> void:
+	if _status_timer > 0.0:
+		_status_timer -= delta
+		if _status_timer <= 0.0 and _status_popup != null:
+			_status_popup.visible = false
 
 # ---------------------------------------------------------------------------
 # Wall generation (same logic as room.gd)
@@ -409,6 +423,14 @@ func _build_practice_room() -> void:
 	_reset_prompt.visible  = false
 	contents.add_child(_reset_prompt)
 
+	# Status popup (centered, hidden until triggered)
+	_status_popup          = Label.new()
+	_status_popup.text     = ""
+	_status_popup.position = Vector2(-100, 0)
+	_status_popup.visible  = false
+	_status_popup.add_theme_font_size_override("font_size", 24)
+	contents.add_child(_status_popup)
+
 func _create_boss_terminal(boss_idx: int, pos: Vector2) -> void:
 	# Terminal visual — colored rectangle
 	var poly      := Polygon2D.new()
@@ -464,6 +486,9 @@ func _spawn_practice_boss(boss_idx: int) -> void:
 		p.visible = false
 	_player_at_boss_terminal = -1
 
+	# Lock doors during simulation
+	_set_doors_locked(true)
+
 	# Spawn the boss
 	var scene: PackedScene
 	match boss_idx:
@@ -486,6 +511,9 @@ func _on_practice_boss_died() -> void:
 	# Keep reset prompt visible so player can spawn another
 
 func _reset_practice() -> void:
+	# Show disruption message only if simulation was active
+	var was_active := _practice_active
+
 	# Kill current boss if alive
 	if _practice_boss != null and is_instance_valid(_practice_boss):
 		_practice_boss.queue_free()
@@ -507,9 +535,97 @@ func _reset_practice() -> void:
 	_practice_active = false
 	_reset_prompt.visible = false
 
+	# Unlock doors
+	_set_doors_locked(false)
+
 	# Heal player
+	_heal_player()
+
+	# Show disruption message if simulation was running
+	if was_active:
+		_show_status("SIMULATION DISRUPTED", Color(0.8, 0.6, 0.2))
+
+
+func _on_practice_boss_defeated() -> void:
+	if not _practice_active:
+		return
+
+	_practice_active = false
+	_practice_boss = null
+	_reset_prompt.visible = false
+
+	# Clear any spawned enemies (drifters from Relay, etc.)
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+
+	# Clear projectiles
+	for child in contents.get_children():
+		if child is Label or child is Polygon2D or child is Area2D:
+			continue
+		child.queue_free()
+
+	# Unlock doors
+	_set_doors_locked(false)
+
+	# Heal player
+	_heal_player()
+
+	# Show success message
+	_show_status("SIMULATION PASSED", Color(0.2, 0.9, 0.4))
+
+
+func _on_practice_player_died() -> void:
+	if not _practice_active:
+		return
+
+	# Clear boss and enemies
+	if _practice_boss != null and is_instance_valid(_practice_boss):
+		_practice_boss.queue_free()
+		_practice_boss = null
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+
+	# Clear projectiles
+	for child in contents.get_children():
+		if child is Label or child is Polygon2D or child is Area2D:
+			continue
+		child.queue_free()
+
+	_practice_active = false
+	_reset_prompt.visible = false
+
+	# Unlock doors
+	_set_doors_locked(false)
+
+	# Player already healed in player._die(), but ensure full health
+	_heal_player()
+
+	# Show failure message
+	_show_status("SIMULATION FAILED", Color(0.9, 0.2, 0.2))
+
+
+func _set_doors_locked(locked: bool) -> void:
+	for area in _doors.values():
+		(area as Area2D).monitoring = not locked
+
+
+func _heal_player() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null:
 		var stats = player.get_node_or_null("Stats")
 		if stats != null and stats.has_method("heal"):
 			stats.heal(999)
+		EventBus.player_health_changed.emit(stats.current_health, stats.max_health)
+
+
+func _show_status(text: String, color: Color) -> void:
+	if _status_popup == null:
+		return
+	_status_popup.text = text
+	_status_popup.modulate = color
+	_status_popup.position = Vector2(-float(text.length()) * 6.0, 0)  # rough centering
+	_status_popup.visible = true
+	_status_timer = 2.5  # show for 2.5 seconds

@@ -31,7 +31,7 @@ const ORIGIN        := Vector2(32, 32)   # center of first heart (screen px)
 # ---------------------------------------------------------------------------
 const BOSS_BAR_W   := 400.0
 const BOSS_BAR_H   := 18.0
-const BOSS_BAR_POS := Vector2(280.0, 490.0)   # top-left corner (960×540 viewport)
+const BOSS_BAR_POS := Vector2(280.0, 510.0)   # bottom center (960×540 viewport)
 
 # ---------------------------------------------------------------------------
 # State
@@ -141,9 +141,16 @@ func _on_health_changed(current_hp: float, max_hp: float) -> void:
 # ---------------------------------------------------------------------------
 # Boss health bar
 # ---------------------------------------------------------------------------
-func _on_boss_health_changed(current_hp: float, max_hp: float) -> void:
+var _boss_name: String = ""
+
+func _on_boss_health_changed(current_hp: float, max_hp: float, boss_name: String) -> void:
 	if _boss_bar_root == null:
-		_build_boss_bar(max_hp)
+		_build_boss_bar(max_hp, boss_name)
+	elif _boss_name != boss_name:
+		# Different boss, update label
+		_boss_name = boss_name
+		if _boss_bar_label != null:
+			_boss_bar_label.text = boss_name
 	_boss_max_hp = max_hp
 	_update_boss_bar(current_hp)
 
@@ -153,9 +160,11 @@ func _on_boss_died() -> void:
 		_boss_bar_root  = null
 		_boss_bar_fill  = null
 		_boss_bar_label = null
+		_boss_name      = ""
 
-func _build_boss_bar(max_hp: float) -> void:
+func _build_boss_bar(max_hp: float, boss_name: String) -> void:
 	_boss_max_hp = max_hp
+	_boss_name = boss_name
 
 	_boss_bar_root = Node2D.new()
 	_boss_bar_root.position = BOSS_BAR_POS
@@ -163,7 +172,7 @@ func _build_boss_bar(max_hp: float) -> void:
 
 	# Name label
 	_boss_bar_label = Label.new()
-	_boss_bar_label.text     = "THE SUPERVISOR"
+	_boss_bar_label.text     = boss_name
 	_boss_bar_label.position = Vector2(0, -22)
 	_boss_bar_root.add_child(_boss_bar_label)
 

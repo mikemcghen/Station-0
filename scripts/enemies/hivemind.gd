@@ -55,7 +55,7 @@ const PULSE_CD         := 5.0
 const HOMING_COUNT     := 4
 const HOMING_SPEED     := 80.0
 const HOMING_TURN      := 1.8   # rad/sec
-const HOMING_LIFETIME  := 4.0   # seconds before homing projectiles expire
+const HOMING_LIFETIME  := 7.0   # seconds before homing projectiles expire
 
 const FREEZE_DURATION  := 2.0
 
@@ -80,6 +80,7 @@ var _wave_spawned:     bool  = false  # has current wave been spawned?
 var _core_visual: Node2D = null
 var _core_poly:   Polygon2D = null
 var _contact_area: Area2D = null
+var _collision_shape: CollisionShape2D = null
 
 # Teleport state
 enum TeleportState { IDLE, FADING_OUT, IN_TRANSIT }
@@ -128,14 +129,23 @@ func _ready() -> void:
 	contact_cooldown = 0.8
 
 	_room_center = global_position
+
+	# Get scene collision nodes
+	_contact_area = $ContactArea
+	_collision_shape = $Collision
+
 	_build_core_visual()
 	_core_visual.visible = false   # hidden during assembly
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
-	# Disable contact during assembly
+	# Disable and scale down collision during assembly
 	if _contact_area:
 		_contact_area.monitoring = false
 		_contact_area.monitorable = false
+		_contact_area.scale = Vector2(_core_scale, _core_scale)
+	if _collision_shape:
+		_collision_shape.disabled = true
+		_collision_shape.scale = Vector2(_core_scale, _core_scale)
 
 
 func _physics_process(delta: float) -> void:
@@ -188,19 +198,11 @@ func _build_core_visual() -> void:
 	eye.color = Color(0.8, 0.2, 0.5)
 	_core_visual.add_child(eye)
 
-	# Contact area for damage
-	_contact_area = Area2D.new()
-	_contact_area.collision_layer = 0
-	_contact_area.collision_mask = 2
-	var cs := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = 40.0
-	cs.shape = circle
-	_contact_area.add_child(cs)
-	_contact_area.body_entered.connect(_on_contact_hit)
-	_core_visual.add_child(_contact_area)
-
 	add_child(_core_visual)
+
+	# Connect scene's contact area to damage handler
+	if _contact_area:
+		_contact_area.body_entered.connect(_on_contact_hit)
 
 
 func _on_contact_hit(body: Node) -> void:
@@ -296,16 +298,26 @@ func _grow_core() -> void:
 		_core_visual.visible = true
 	_core_visual.scale = Vector2(_core_scale, _core_scale)
 
+	# Scale collision shapes to match visual
+	if _contact_area:
+		_contact_area.scale = Vector2(_core_scale, _core_scale)
+	if _collision_shape:
+		_collision_shape.scale = Vector2(_core_scale, _core_scale)
+
 
 func _enter_active() -> void:
 	_phase = Phase.ACTIVE
 	_core_visual.visible = true
 	_core_visual.scale = Vector2(1.0, 1.0)
 
-	# Enable contact
+	# Enable and scale up collision
 	if _contact_area:
 		_contact_area.monitoring = true
 		_contact_area.monitorable = true
+		_contact_area.scale = Vector2(1.0, 1.0)
+	if _collision_shape:
+		_collision_shape.disabled = false
+		_collision_shape.scale = Vector2(1.0, 1.0)
 
 	_teleport_timer = 2.0
 	_sweep_timer = 3.0
@@ -315,7 +327,7 @@ func _enter_active() -> void:
 	_spawn_orbiters()
 
 	# Emit boss health bar start
-	EventBus.boss_health_changed.emit(current_health, max_health)
+	EventBus.boss_health_changed.emit(current_health, max_health, "THE HIVEMIND")
 
 
 # ---------------------------------------------------------------------------
@@ -362,6 +374,8 @@ func _enter_transit() -> void:
 	_core_visual.modulate.a = 0.0
 	if _contact_area:
 		_contact_area.monitoring = false
+	if _collision_shape:
+		_collision_shape.disabled = true
 	_transit_timer = TRANSIT_TIME
 
 
@@ -382,6 +396,8 @@ func _reappear() -> void:
 	_core_visual.modulate = Color(2.0, 2.0, 2.0, 1.0)
 	if _contact_area:
 		_contact_area.monitoring = true
+	if _collision_shape:
+		_collision_shape.disabled = false
 
 	var tw := create_tween()
 	var base_color := Color(0.5, 0.15, 0.25) if _phase == Phase.UNIQUE else Color(1, 1, 1, 1)
@@ -874,7 +890,7 @@ func take_damage(amount: float) -> void:
 
 	current_health -= amount
 	_flash_timer = 0.1
-	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health)
+	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health, "THE HIVEMIND")
 
 	if current_health <= 0.0:
 		_enter_climax()
