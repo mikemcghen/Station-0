@@ -25,7 +25,7 @@ const SWEEP_SPEED_P1 := 50.0
 const SWEEP_SPEED_P2 := 85.0
 const SWEEP_CD_P1    := 6.5
 const SWEEP_CD_P2    := 4.5
-const PROJ_SPACING   := 18.0
+const PROJ_SPACING   := 26.0
 const GAP_W          := 90.0
 
 const MINE_CD_P1     := 4.0

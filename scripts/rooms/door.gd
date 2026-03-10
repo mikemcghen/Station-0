@@ -5,15 +5,15 @@ class_name RoomDoor
 # Constants
 # ---------------------------------------------------------------------------
 const DOOR_THICKNESS := 12.0
-const INDICATOR_SIZE := 10.0
-const INDICATOR_OFFSET := 20.0  # distance above door
+const INDICATOR_SIZE := 14.0
+const INDICATOR_OFFSET := 24.0  # distance from door toward room center
 
-# Indicator light colors - only for special rooms, matching floor colors but brighter
+# Indicator light colors - only for special rooms, bright and visible
 # Keys are int values to match what get_room_type_at() returns
 const INDICATOR_COLORS := {
-	2: Color(0.2, 0.45, 0.2),   # ITEM = green
-	3: Color(0.9, 0.75, 0.1),   # SHOP = yellow
-	4: Color(0.7, 0.15, 0.15),  # BOSS = red
+	2: Color(0.3, 0.9, 0.3),    # ITEM = bright green
+	3: Color(1.0, 0.85, 0.2),   # SHOP = bright yellow
+	4: Color(0.95, 0.2, 0.2),   # BOSS = bright red
 }
 
 # ---------------------------------------------------------------------------
@@ -84,13 +84,13 @@ func _build_indicator() -> void:
 		Vector2(0, s), Vector2(-s, 0),
 	])
 
-	# Position based on door direction
+	# Position based on door direction - offset INTO the room (toward center)
 	var offset := Vector2.ZERO
 	match direction:
-		"up":    offset = Vector2(0, -door_size.y / 2.0 - INDICATOR_OFFSET)
-		"down":  offset = Vector2(0, door_size.y / 2.0 + INDICATOR_OFFSET)
-		"left":  offset = Vector2(-door_size.x / 2.0 - INDICATOR_OFFSET, 0)
-		"right": offset = Vector2(door_size.x / 2.0 + INDICATOR_OFFSET, 0)
+		"up":    offset = Vector2(0, door_size.y / 2.0 + INDICATOR_OFFSET)
+		"down":  offset = Vector2(0, -door_size.y / 2.0 - INDICATOR_OFFSET)
+		"left":  offset = Vector2(door_size.x / 2.0 + INDICATOR_OFFSET, 0)
+		"right": offset = Vector2(-door_size.x / 2.0 - INDICATOR_OFFSET, 0)
 
 	_indicator.position = offset
 	_indicator.color = INDICATOR_COLORS[type_id]
