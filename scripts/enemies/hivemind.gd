@@ -582,10 +582,16 @@ func _tick_sweep_projs(delta: float) -> void:
 	var still_valid: Array[Dictionary] = []
 
 	for p in _sweep_projs:
-		if not p.has("node"):
+		if not p.has("node") or not p.has("vel"):
 			continue
-		var node: Node2D = p["node"]
-		if not is_instance_valid(node):
+
+		# Check validity on raw value before casting
+		var raw_node = p["node"]
+		if raw_node == null or not is_instance_valid(raw_node):
+			continue
+
+		var node := raw_node as Node2D
+		if node == null:
 			continue
 
 		var vel: Vector2 = p["vel"]
