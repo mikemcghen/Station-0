@@ -114,7 +114,7 @@ func _fire(direction: Vector2) -> void:
 
 func _spawn_projectile(dir: Vector2, zero_damage: bool = false) -> void:
 	var proj: Area2D = PROJECTILE.instantiate()
-	proj.global_position  = shoot_origin.global_position
+	proj.global_position  = global_position  # Spawn at player center to avoid wall clipping
 	proj.direction        = dir
 	proj.speed            = stats.proj_speed
 	proj.max_range        = stats.range_

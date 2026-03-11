@@ -64,6 +64,9 @@ func apply_slow(duration: float, factor: float) -> void:
 	# Stack slows by adding new effect - factors multiply together
 	_slow_effects.append({"factor": factor, "timer": duration})
 
+func clear_slows() -> void:
+	_slow_effects.clear()
+
 func _tick_slow(delta: float) -> void:
 	# Tick down all slow effects and remove expired ones
 	var i := _slow_effects.size() - 1

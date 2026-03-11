@@ -25,6 +25,7 @@ const HIVEMIND_SCENE    = preload("res://scenes/enemies/hivemind.tscn")
 const BODY_PART_PICKUP  = preload("res://scenes/upgrades/body_part_pickup.tscn")
 const RUN_ITEM_PICKUP   = preload("res://scenes/items/run_item_pickup.tscn")
 const SHOP_PEDESTAL_SCR = preload("res://scripts/items/shop_item_pedestal.gd")
+const STATION_DOOR_SCR  = preload("res://scripts/rooms/station_door.gd")
 
 const ALL_PART_PATHS: Array[String] = [
 	"res://data/body_parts/head_wide_angle_lens.tres",
@@ -56,6 +57,7 @@ var _floor:       Node     = null   # reference to floor.gd node
 var _enemy_count: int      = 0
 var _doors:       Dictionary = {}   # direction -> Area2D trigger
 var _physical_doors: Dictionary = {}  # direction -> RoomDoor
+var _floor_exit_door: StationDoor = null  # boss room exit door
 
 # ---------------------------------------------------------------------------
 # Signal tracking for explicit cleanup (safer than relying on auto-cleanup)
@@ -103,6 +105,9 @@ func activate() -> void:
 			data.cleared = true
 		RoomData.RoomType.SHOP:
 			_spawn_shop()
+			data.cleared = true
+		RoomData.RoomType.START:
+			_spawn_entry_door()
 			data.cleared = true
 		_:
 			data.cleared = true
@@ -339,39 +344,39 @@ func _on_enemy_died() -> void:
 func _spawn_floor_exit() -> void:
 	var is_final_floor := RunManager.current_floor >= 3
 
-	# Visual — bright teal portal offset from body part drop (which is at center)
-	var poly     := Polygon2D.new()
-	poly.polygon  = PackedVector2Array([-35, -50, 35, -50, 35, 50, -35, 50])
-	poly.color    = Color(0.2, 0.85, 0.9)
-	poly.position = Vector2(120, 0)
-	contents.add_child(poly)
+	# Station door for floor transition - positioned to the right of body part drop
+	_floor_exit_door = StationDoor.new()
+	_floor_exit_door.position = Vector2(150, 0)
 
-	var lbl      := Label.new()
-	lbl.text     = "EXTRACT" if is_final_floor else "NEXT FLOOR"
-	lbl.position = Vector2(85, -75)
-	contents.add_child(lbl)
+	if is_final_floor:
+		_floor_exit_door.setup_evacuation_exit()
+	else:
+		# Next sector: floor 1 -> SECTOR 2, floor 2 -> SECTOR 3
+		_floor_exit_door.setup_sector_exit(RunManager.current_floor + 1)
 
-	var area := Area2D.new()
-	area.collision_layer = 0
-	area.collision_mask  = 2
+	_floor_exit_door.door_entered.connect(_on_floor_exit_entered)
+	contents.add_child(_floor_exit_door)
 
-	var cs := CollisionShape2D.new()
-	var rs := RectangleShape2D.new()
-	rs.size  = Vector2(70, 100)
-	cs.shape = rs
-	area.add_child(cs)
-	area.position = Vector2(120, 0)
+	# Open the door now that boss is dead
+	_floor_exit_door.open()
 
-	area.body_entered.connect(func(body: Node) -> void:
-		if body.is_in_group("player"):
-			RunManager.player_health_carry = body.stats.current_health
-			if RunManager.current_floor >= 3:
-				RunManager.end_run(true)
-			else:
-				RunManager.advance_floor()
-				get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn")
-	)
-	contents.add_child(area)
+
+func _on_floor_exit_entered(body: Node) -> void:
+	RunManager.player_health_carry = body.stats.current_health
+	if RunManager.current_floor >= 3:
+		RunManager.end_run(true)
+	else:
+		RunManager.advance_floor()
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn")
+
+
+func _spawn_entry_door() -> void:
+	# Decorative open door behind spawn point - shows "you entered from here"
+	# Positioned at bottom of room (player spawns in center, door behind them)
+	var entry_door := StationDoor.new()
+	entry_door.position = Vector2(0, ROOM_H / 2.0 - 80)  # near bottom wall
+	entry_door.setup_entry_door()
+	contents.add_child(entry_door)
 
 
 func _spawn_body_part_drop() -> void:
@@ -424,13 +429,13 @@ func _make_oil_slick(pos: Vector2) -> void:
 	cs.shape  = sh
 	slick.add_child(cs)
 
-	# Visual — flattened dark ellipse (puddle)
+	# Visual — circle matching collision shape
 	var poly := Polygon2D.new()
 	var pts  := PackedVector2Array()
 	var segs := 14
 	for i in segs:
 		var a := i * TAU / segs
-		pts.append(Vector2(cos(a) * radius, sin(a) * radius * 0.55))
+		pts.append(Vector2(cos(a) * radius, sin(a) * radius))
 	poly.polygon = pts
 	poly.color   = Color(0.04, 0.07, 0.14, 0.78)
 	slick.add_child(poly)
@@ -443,8 +448,8 @@ func _make_oil_slick(pos: Vector2) -> void:
 	slick.body_exited.connect(func(b: Node) -> void:
 		if b.is_in_group("player") and b.has_method("exit_slick"):
 			b.exit_slick()
-		elif b.is_in_group("enemies") and b.has_method("apply_slow"):
-			b.apply_slow(0.0, 1.0))   # clear slow immediately
+		elif b.is_in_group("enemies") and b.has_method("clear_slows"):
+			b.clear_slows())
 
 	contents.add_child(slick)
 
