@@ -578,14 +578,14 @@ func _update_door_locks() -> void:
 func _exit_tree() -> void:
 	# Disconnect enemy death signals
 	for conn in _enemy_death_connections:
-		var node: Node = conn["node"]
+		var node = conn["node"]  # untyped to avoid error on freed instances
 		if is_instance_valid(node) and node.is_connected(conn["signal"], conn["callable"]):
 			node.disconnect(conn["signal"], conn["callable"])
 	_enemy_death_connections.clear()
 
 	# Disconnect door trigger signals
 	for conn in _door_connections:
-		var node: Node = conn["node"]
+		var node = conn["node"]  # untyped to avoid error on freed instances
 		if is_instance_valid(node) and node.is_connected(conn["signal"], conn["callable"]):
 			node.disconnect(conn["signal"], conn["callable"])
 	_door_connections.clear()
