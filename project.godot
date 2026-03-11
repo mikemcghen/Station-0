@@ -21,16 +21,16 @@ config/icon="res://assets/icon.svg"
 
 [autoload]
 
-# ===== AUTOLOAD INITIALIZATION ORDER =====
-# Order is critical! Dependencies must load before dependents.
-# Layer 0: Core systems (no dependencies)
+; ===== AUTOLOAD INITIALIZATION ORDER =====
+; Order is critical! Dependencies must load before dependents.
+; Layer 0: Core systems (no dependencies)
 EventBus="*res://scripts/event_bus.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
-# Layer 1: Core managers (depend on EventBus only)
+; Layer 1: Core managers (depend on EventBus only)
 GameManager="*res://scripts/game_manager.gd"
 SaveManager="*res://scripts/save_manager.gd"
 UpgradeManager="*res://scripts/upgrades/upgrade_manager.gd"
-# Layer 2: Run systems (depend on Layer 1)
+; Layer 2: Run systems (depend on Layer 1)
 RunManager="*res://scripts/run_manager.gd"
 CardCollection="*res://scripts/cards/card_collection.gd"
 NPCManager="*res://scripts/npcs/npc_manager.gd"
