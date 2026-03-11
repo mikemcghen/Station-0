@@ -86,6 +86,7 @@ func _do_fire(delta: float) -> void:
 		_shot_timer = BURST_PAUSE
 
 func _fire_projectile() -> void:
+	AudioManager.play("enemy_shoot")
 	var proj = ENEMY_PROJECTILE.instantiate()
 	proj.position  = (get_parent() as Node2D).to_local(global_position)
 	proj.direction = Vector2.from_angle(_fire_angle)

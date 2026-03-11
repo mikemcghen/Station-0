@@ -327,6 +327,7 @@ func _on_enemy_died() -> void:
 	_enemy_count -= 1
 	if _enemy_count <= 0:
 		data.cleared = true
+		AudioManager.play("room_clear")
 		if data.type == RoomData.RoomType.BOSS:
 			_spawn_body_part_drop()
 			_spawn_floor_exit()
@@ -566,11 +567,18 @@ func _update_door_locks() -> void:
 		(area as Area2D).monitoring = not locked
 
 	# Update physical door barriers
+	var was_unlocked := false
+	for door in _physical_doors.values():
+		if not door.is_locked():
+			was_unlocked = true
+			break
 	for door in _physical_doors.values():
 		if locked:
 			door.lock()
 		else:
 			door.unlock()
+	if locked and was_unlocked:
+		AudioManager.play("door_close")
 
 # ---------------------------------------------------------------------------
 # Explicit signal cleanup on exit (safer than relying on Godot auto-cleanup)

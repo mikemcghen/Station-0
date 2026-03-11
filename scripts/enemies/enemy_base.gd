@@ -91,6 +91,7 @@ func take_damage(amount: float) -> void:
 		_die()
 
 func _die() -> void:
+	AudioManager.play("enemy_death")
 	_spawn_drop()
 	queue_free()
 
