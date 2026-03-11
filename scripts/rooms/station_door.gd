@@ -26,7 +26,7 @@ const EXIT_LIGHT := Color(0.2, 0.95, 0.4)  # bright green exit
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-enum DoorType { ENTRY, SECTOR_EXIT, EVACUATION_EXIT }
+enum DoorType { ENTRY, SECTOR_EXIT, EVACUATION_EXIT, HUB_PORTAL }
 
 var door_type: DoorType = DoorType.ENTRY
 var sector_label: String = ""  # "SECTOR 2", "SECTOR 3", or "EXIT"
@@ -77,6 +77,17 @@ func setup_evacuation_exit() -> void:
 	_build_label()
 	_build_trigger()
 	close()  # starts closed until boss dies
+
+func setup_hub_portal() -> void:
+	# Hub staging room portal - decorative open door with "START RUN" label
+	door_type = DoorType.HUB_PORTAL
+	sector_label = "START RUN"
+	is_functional = false  # interaction handled by hub_room.gd
+	_build_frame()
+	_build_panels()
+	_build_indicator()
+	_build_label()
+	open()  # always open in hub
 
 # ---------------------------------------------------------------------------
 # Build components

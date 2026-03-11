@@ -324,6 +324,9 @@ func _spawn_boss() -> void:
 	_enemy_death_connections.append({"node": boss, "signal": "tree_exited", "callable": callable})
 	_enemy_count = 1
 
+	# Spawn exit door on top wall (visible but closed until boss defeated)
+	_spawn_floor_exit_door()
+
 
 func _on_enemy_died() -> void:
 	# Guard against deferred callback running after room is freed
@@ -335,30 +338,34 @@ func _on_enemy_died() -> void:
 		AudioManager.play("room_clear")
 		if data.type == RoomData.RoomType.BOSS:
 			_spawn_body_part_drop()
-			_spawn_floor_exit()
+			_open_floor_exit()
 		room_cleared.emit()
 		EventBus.room_cleared.emit(data.id)
 		_update_door_locks()
 
 
-func _spawn_floor_exit() -> void:
+func _spawn_floor_exit_door() -> void:
+	# Create the exit door on the top wall (closed until boss defeated)
 	var is_final_floor := RunManager.current_floor >= 3
 
-	# Station door for floor transition - positioned to the right of body part drop
 	_floor_exit_door = StationDoor.new()
-	_floor_exit_door.position = Vector2(150, 0)
+	# Position on top wall, centered
+	_floor_exit_door.position = Vector2(0, -ROOM_H / 2.0 + 80)
 
 	if is_final_floor:
 		_floor_exit_door.setup_evacuation_exit()
 	else:
-		# Next sector: floor 1 -> SECTOR 2, floor 2 -> SECTOR 3
 		_floor_exit_door.setup_sector_exit(RunManager.current_floor + 1)
 
 	_floor_exit_door.door_entered.connect(_on_floor_exit_entered)
 	contents.add_child(_floor_exit_door)
+	# Door starts closed (setup functions already call close())
 
+
+func _open_floor_exit() -> void:
 	# Open the door now that boss is dead
-	_floor_exit_door.open()
+	if _floor_exit_door != null:
+		_floor_exit_door.open()
 
 
 func _on_floor_exit_entered(body: Node) -> void:
@@ -426,20 +433,24 @@ func _make_oil_slick(pos: Vector2) -> void:
 	slick.collision_mask  = 2 | 8   # player (2) + enemies (8)
 	slick.position        = pos
 
-	var radius: float = randf_range(44.0, 68.0)
+	# Oval dimensions — wider than tall
+	var radius_x: float = randf_range(55.0, 85.0)
+	var radius_y: float = randf_range(35.0, 50.0)
+
+	# Use rectangle shape for collision (approximates oval)
 	var cs := CollisionShape2D.new()
-	var sh := CircleShape2D.new()
-	sh.radius = radius
-	cs.shape  = sh
+	var sh := RectangleShape2D.new()
+	sh.size = Vector2(radius_x * 1.6, radius_y * 1.6)  # slightly smaller than visual
+	cs.shape = sh
 	slick.add_child(cs)
 
-	# Visual — circle matching collision shape
+	# Visual — oval shape
 	var poly := Polygon2D.new()
 	var pts  := PackedVector2Array()
-	var segs := 14
+	var segs := 16
 	for i in segs:
 		var a := i * TAU / segs
-		pts.append(Vector2(cos(a) * radius, sin(a) * radius))
+		pts.append(Vector2(cos(a) * radius_x, sin(a) * radius_y))
 	poly.polygon = pts
 	poly.color   = Color(0.04, 0.07, 0.14, 0.78)
 	slick.add_child(poly)

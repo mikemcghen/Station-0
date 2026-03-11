@@ -24,6 +24,7 @@ const DOOR_W := 80.0
 const DOOR_H := 80.0
 
 const WALL_COLOR := Color(0.18, 0.18, 0.25)
+const STATION_DOOR_SCRIPT = preload("res://scripts/rooms/station_door.gd")
 
 const ROOM_NAMES := [
 	"STAGING AREA",   # 0
@@ -272,33 +273,27 @@ func _build_armory_workbench() -> void:
 # Staging Area run portal
 # ---------------------------------------------------------------------------
 func _build_run_portal() -> void:
-	# Visual — bright green rectangle
-	var poly      := Polygon2D.new()
-	poly.polygon   = PackedVector2Array([-40, -30, 40, -30, 40, 30, -40, 30])
-	poly.color     = Color(0.2, 0.9, 0.4)
-	poly.position  = Vector2(0, -150)
-	contents.add_child(poly)
-
-	# Label above portal
-	var lbl      := Label.new()
-	lbl.text     = "START RUN"
-	lbl.position = Vector2(-36, -195)
-	contents.add_child(lbl)
+	# Station door with proper frame graphics
+	var portal_door := Node2D.new()
+	portal_door.set_script(STATION_DOOR_SCRIPT)
+	portal_door.position = Vector2(0, -150)
+	contents.add_child(portal_door)
+	portal_door.setup_hub_portal()
 
 	_portal_prompt          = Label.new()
 	_portal_prompt.text     = "[E] Start Run"
-	_portal_prompt.position = Vector2(-50, -210)
+	_portal_prompt.position = Vector2(-50, -85)  # below the door label
 	_portal_prompt.visible  = false
 	contents.add_child(_portal_prompt)
 
-	# Trigger zone
+	# Trigger zone for interaction
 	var area := Area2D.new()
 	area.collision_layer = 0
 	area.collision_mask  = 2
 
 	var cs := CollisionShape2D.new()
 	var rs := RectangleShape2D.new()
-	rs.size  = Vector2(80, 60)
+	rs.size  = Vector2(80, 100)
 	cs.shape = rs
 	area.add_child(cs)
 	area.position = Vector2(0, -150)

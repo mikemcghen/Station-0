@@ -50,6 +50,7 @@ const BEAM_LENGTH      := 500.0
 const BEAM_WIDTH       := 28.0
 const PULSE_FORCE      := 350.0
 const PULSE_CD         := 5.0
+const PULSE_RADIUS     := 200.0
 const HOMING_COUNT     := 4
 const HOMING_SPEED     := 120.0
 const HOMING_TURN      := 1.8   # rad/sec
@@ -747,9 +748,12 @@ func _attack_pulse() -> void:
 	if _player == null or not is_instance_valid(_player):
 		return
 
-	var dir := (_player.global_position - global_position).normalized()
-	if _player.has_method("apply_knockback"):
-		_player.apply_knockback(dir * PULSE_FORCE)
+	# Only apply knockback if player is within pulse radius
+	var dist := global_position.distance_to(_player.global_position)
+	if dist <= PULSE_RADIUS:
+		var dir := (_player.global_position - global_position).normalized()
+		if _player.has_method("apply_knockback"):
+			_player.apply_knockback(dir * PULSE_FORCE)
 
 	# Visual pulse ring
 	var ring := Polygon2D.new()
@@ -812,13 +816,24 @@ func _on_homing_hit(body: Node, proj: Node2D) -> void:
 
 func _tick_homing_projs(delta: float) -> void:
 	if _player == null or not is_instance_valid(_player):
+		# Player died or invalid — clear all homing projectiles
+		for p in _homing_projs:
+			var raw_node = p.get("node")
+			if raw_node != null and is_instance_valid(raw_node):
+				raw_node.queue_free()
+		_homing_projs.clear()
 		return
 
 	var still_valid: Array[Dictionary] = []
 
 	for p in _homing_projs:
-		var node: Node2D = p["node"]
-		if not is_instance_valid(node):
+		# Check validity on raw value before typed assignment to avoid error
+		var raw_node = p.get("node")
+		if raw_node == null or not is_instance_valid(raw_node):
+			continue
+
+		var node := raw_node as Node2D
+		if node == null:
 			continue
 
 		# Age check

@@ -31,6 +31,7 @@ var _slick_count: int = 0
 
 # Knockback — applied by enemies (e.g., Hivemind pulse)
 var _knockback_velocity: Vector2 = Vector2.ZERO
+var _knockback_flash_timer: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
@@ -62,8 +63,9 @@ func _handle_movement() -> void:
 		input_dir = input_dir.normalized()
 
 	if _slick_count > 0:
-		# Oil slick — momentum-based: velocity slowly drifts toward desired direction
-		velocity = velocity.lerp(input_dir * stats.speed, 0.08)
+		# Oil slick — 40% slower + momentum-based movement
+		var slick_speed := stats.speed * 0.6
+		velocity = velocity.lerp(input_dir * slick_speed, 0.12)
 	else:
 		velocity = input_dir * stats.speed
 
@@ -168,6 +170,12 @@ func _handle_iframes(delta: float) -> void:
 		body.modulate = Color(1, 1, 1, 1)
 		return
 
+	# Knockback flash — magenta pulse when pushed by enemy ability
+	if _knockback_flash_timer > 0.0:
+		_knockback_flash_timer -= delta
+		body.modulate = Color(1.0, 0.4, 0.7, 1.0)
+		return
+
 	# Shield active — cyan tint
 	if _shield_active:
 		body.modulate = Color(0.4, 0.9, 1.0)
@@ -216,6 +224,10 @@ func take_damage(amount: float) -> void:
 
 func _die() -> void:
 	if RunManager.run_active:
+		# Disable player so they can't move during death screen
+		set_physics_process(false)
+		set_process_input(false)
+		visible = false
 		RunManager.end_run(false)
 	else:
 		# In hub/practice — signal for practice room handling, then heal
@@ -277,6 +289,7 @@ func exit_slick() -> void:
 # ---------------------------------------------------------------------------
 func apply_knockback(force: Vector2) -> void:
 	_knockback_velocity = force
+	_knockback_flash_timer = 0.25  # brief magenta flash to show player was pushed
 
 # ---------------------------------------------------------------------------
 # Room event handlers
