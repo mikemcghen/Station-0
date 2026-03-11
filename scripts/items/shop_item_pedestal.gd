@@ -68,6 +68,7 @@ func _attempt_purchase() -> void:
 		return
 
 	RunManager.spend_credits(price)
+	AudioManager.play("item_pickup")
 
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if player == null:

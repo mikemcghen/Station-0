@@ -86,6 +86,7 @@ func get_slow_factor() -> float:
 func take_damage(amount: float) -> void:
 	current_health -= amount
 	_flash_timer = 0.1
+	AudioManager.play("enemy_hit")
 	if current_health <= 0.0:
 		_die()
 

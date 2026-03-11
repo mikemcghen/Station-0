@@ -94,6 +94,7 @@ func _handle_shooting(delta: float) -> void:
 		_shoot_timer = 1.0 / stats.fire_rate
 
 func _fire(direction: Vector2) -> void:
+	AudioManager.play("player_shoot")
 	# Overclock: every 3rd shot deals 0 damage
 	var is_zeroed_shot := false
 	if stats.overclock:
@@ -201,6 +202,7 @@ func take_damage(amount: float) -> void:
 
 	stats.current_health -= actual
 	_iframe_timer = IFRAME_DURATION
+	AudioManager.play("player_hit")
 	EventBus.player_health_changed.emit(stats.current_health, stats.max_health)
 
 	# Reactive effects on taking damage

@@ -15,6 +15,7 @@ func _draw() -> void:
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("player") or item == null:
 		return
+	AudioManager.play("item_pickup")
 	RunManager.collect_item(item)  # Triggers item_collected signal -> player_stats recalculates
 	if item.heal_on_pickup > 0.0:
 		body.stats.heal(item.heal_on_pickup)

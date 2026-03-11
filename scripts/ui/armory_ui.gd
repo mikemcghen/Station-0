@@ -82,13 +82,16 @@ func _input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("ui_up"):
 		_cursor = wrapi(_cursor - 1, 0, maxi(1, _items.size()))
+		AudioManager.play("ui_select")
 		_refresh_labels()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_down"):
 		_cursor = wrapi(_cursor + 1, 0, maxi(1, _items.size()))
+		AudioManager.play("ui_select")
 		_refresh_labels()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept"):
+		AudioManager.play("ui_click")
 		_equip_selected()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_cancel"):

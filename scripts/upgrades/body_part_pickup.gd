@@ -7,5 +7,6 @@ func _ready() -> void:
 
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("player") and part != null:
+		AudioManager.play("item_pickup")
 		UpgradeManager.acquire_part(part)
 		queue_free()

@@ -53,7 +53,7 @@ func _show_victory() -> void:
 	var btn        := Button.new()
 	btn.text        = "RETURN TO HUB"
 	btn.position    = Vector2(-80, 70)
-	btn.pressed.connect(_fade_out_then_hub)
+	btn.pressed.connect(func(): AudioManager.play("ui_click"); _fade_out_then_hub())
 	_root.add_child(btn)
 
 	_fade_in()

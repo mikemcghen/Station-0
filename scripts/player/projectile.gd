@@ -76,6 +76,7 @@ func _on_body_entered(body: Node) -> void:
 # Explosive — AoE damage to all enemies in radius
 # ---------------------------------------------------------------------------
 func _explode() -> void:
+	AudioManager.play("explosion")
 	var space  := get_world_2d().direct_space_state
 	var query  := PhysicsShapeQueryParameters2D.new()
 	var circle := CircleShape2D.new()

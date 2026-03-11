@@ -113,24 +113,24 @@ func _build_ui() -> void:
 
 	var dep_btn := Button.new()
 	dep_btn.text = "DEPOSIT\n(ON HAND → BANK)"
-	dep_btn.pressed.connect(_on_deposit)
+	dep_btn.pressed.connect(func(): AudioManager.play("ui_click"); _on_deposit())
 	action_row.add_child(dep_btn)
 
 	var wth_btn := Button.new()
 	wth_btn.text = "WITHDRAW\n(BANK → ON HAND)"
-	wth_btn.pressed.connect(_on_withdraw)
+	wth_btn.pressed.connect(func(): AudioManager.play("ui_click"); _on_withdraw())
 	action_row.add_child(wth_btn)
 
 	# Close
 	var close_btn := Button.new()
 	close_btn.text = "CLOSE"
-	close_btn.pressed.connect(close)
+	close_btn.pressed.connect(func(): AudioManager.play("ui_click"); close())
 	vbox.add_child(close_btn)
 
 func _add_btn(parent: Node, text: String, cb: Callable) -> void:
 	var b      := Button.new()
 	b.text      = text
-	b.pressed.connect(cb)
+	b.pressed.connect(func(): AudioManager.play("ui_click"); cb.call())
 	parent.add_child(b)
 
 # ---------------------------------------------------------------------------

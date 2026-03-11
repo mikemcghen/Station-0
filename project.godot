@@ -23,8 +23,9 @@ config/icon="res://assets/icon.svg"
 
 # ===== AUTOLOAD INITIALIZATION ORDER =====
 # Order is critical! Dependencies must load before dependents.
-# Layer 0: Event system (no dependencies)
+# Layer 0: Core systems (no dependencies)
 EventBus="*res://scripts/event_bus.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
 # Layer 1: Core managers (depend on EventBus only)
 GameManager="*res://scripts/game_manager.gd"
 SaveManager="*res://scripts/save_manager.gd"

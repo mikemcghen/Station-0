@@ -43,7 +43,7 @@ func _add_button(parent: Node, text: String, callback: Callable) -> void:
 	var btn        := Button.new()
 	btn.text        = text
 	btn.custom_minimum_size = Vector2(240, 48)
-	btn.pressed.connect(callback)
+	btn.pressed.connect(func(): AudioManager.play("ui_click"); callback.call())
 	parent.add_child(btn)
 
 # ---------------------------------------------------------------------------

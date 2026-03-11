@@ -24,5 +24,6 @@ func _physics_process(delta: float) -> void:
 
 func _on_body_entered(body: Node) -> void:
 	if body.is_in_group("player"):
+		AudioManager.play("pickup_scrap")
 		RunManager.earn_credits(value)
 		queue_free()
