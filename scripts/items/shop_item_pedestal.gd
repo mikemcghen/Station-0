@@ -73,11 +73,10 @@ func _attempt_purchase() -> void:
 	if player == null:
 		return
 
-	RunManager.collect_item(item)
+	RunManager.collect_item(item)  # Triggers item_collected signal -> player_stats recalculates
 	if item.heal_on_pickup > 0.0:
 		player.stats.heal(item.heal_on_pickup)
-	player.stats.recalculate()
-	EventBus.player_health_changed.emit(player.stats.current_health, player.stats.max_health)
+		EventBus.player_health_changed.emit(player.stats.current_health, player.stats.max_health)
 
 	_sold            = true
 	_player_in_range = false

@@ -57,7 +57,7 @@ func _physics_process(delta: float) -> void:
 		State.ANCHORED:
 			_do_anchored(delta)
 
-	velocity *= _slow_factor
+	velocity *= get_slow_factor()
 	move_and_slide()
 
 # ---------------------------------------------------------------------------

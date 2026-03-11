@@ -38,6 +38,8 @@ const WIND_UP_DURATION := 0.65   # seconds of warning before beam fires
 # ---------------------------------------------------------------------------
 const FREEZE_DURATION := 2.0
 
+const BEAM_DAMAGE := 1.0
+
 # ---------------------------------------------------------------------------
 # Phase 2 Drifter spawning — one at a time, over a fixed window
 # ---------------------------------------------------------------------------
@@ -304,7 +306,7 @@ func _fire_beam() -> void:
 	area.add_child(cs)
 	area.body_entered.connect(func(body: Node) -> void:
 		if body.is_in_group("player"):
-			body.take_damage(1.0))
+			body.take_damage(BEAM_DAMAGE))
 	beam.add_child(area)
 
 	get_parent().call_deferred("add_child", beam)
@@ -314,11 +316,13 @@ func _fire_beam() -> void:
 # Damage / death — override base to emit boss signals; no drop (room handles it)
 # ---------------------------------------------------------------------------
 func take_damage(amount: float) -> void:
+	if _phase == Phase.CLIMAX:
+		return   # already dying
 	current_health -= amount
 	_flash_timer = 0.1
 	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health, "THE SUPERVISOR")
 	if current_health <= 0.0:
-		_die()
+		_enter_climax()
 
 func _die() -> void:
 	EventBus.boss_died.emit()

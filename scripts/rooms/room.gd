@@ -58,6 +58,12 @@ var _doors:       Dictionary = {}   # direction -> Area2D trigger
 var _physical_doors: Dictionary = {}  # direction -> RoomDoor
 
 # ---------------------------------------------------------------------------
+# Signal tracking for explicit cleanup (safer than relying on auto-cleanup)
+# ---------------------------------------------------------------------------
+var _enemy_death_connections: Array[Dictionary] = []  # [{node, callable}]
+var _door_connections: Array[Dictionary] = []         # [{node, callable}]
+
+# ---------------------------------------------------------------------------
 # Node refs (set by room_base.tscn)
 # ---------------------------------------------------------------------------
 @onready var floor_poly:    Polygon2D = $Floor
@@ -219,7 +225,9 @@ func _build_door_triggers() -> void:
 		area.position = cfg["pos"]
 
 		# Use call_deferred so the transition runs outside the physics callback
-		area.body_entered.connect(_on_door_entered.bind(dir))
+		var callable := _on_door_entered.bind(dir)
+		area.body_entered.connect(callable)
+		_door_connections.append({"node": area, "signal": "body_entered", "callable": callable})
 		door_triggers.add_child(area)
 		_doors[dir] = area
 
@@ -291,7 +299,9 @@ func _spawn_enemies() -> void:
 		var local_pos := Vector2(randf_range(-hw, hw), randf_range(-hh, hh))
 		contents.add_child(enemy)
 		enemy.global_position = to_global(local_pos)
-		enemy.tree_exited.connect(_on_enemy_died, CONNECT_DEFERRED)
+		var callable := _on_enemy_died
+		enemy.tree_exited.connect(callable, CONNECT_DEFERRED)
+		_enemy_death_connections.append({"node": enemy, "signal": "tree_exited", "callable": callable})
 		_enemy_count += 1
 
 
@@ -304,11 +314,16 @@ func _spawn_boss() -> void:
 	var boss  = scene.instantiate()
 	contents.add_child(boss)
 	boss.global_position = to_global(Vector2.ZERO)   # room centre
-	boss.tree_exited.connect(_on_enemy_died, CONNECT_DEFERRED)
+	var callable := _on_enemy_died
+	boss.tree_exited.connect(callable, CONNECT_DEFERRED)
+	_enemy_death_connections.append({"node": boss, "signal": "tree_exited", "callable": callable})
 	_enemy_count = 1
 
 
 func _on_enemy_died() -> void:
+	# Guard against deferred callback running after room is freed
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
 	_enemy_count -= 1
 	if _enemy_count <= 0:
 		data.cleared = true
@@ -353,7 +368,8 @@ func _spawn_floor_exit() -> void:
 				RunManager.end_run(true)
 			else:
 				RunManager.advance_floor()
-				get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn"))
+				get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn")
+	)
 	contents.add_child(area)
 
 
@@ -555,3 +571,21 @@ func _update_door_locks() -> void:
 			door.lock()
 		else:
 			door.unlock()
+
+# ---------------------------------------------------------------------------
+# Explicit signal cleanup on exit (safer than relying on Godot auto-cleanup)
+# ---------------------------------------------------------------------------
+func _exit_tree() -> void:
+	# Disconnect enemy death signals
+	for conn in _enemy_death_connections:
+		var node: Node = conn["node"]
+		if is_instance_valid(node) and node.is_connected(conn["signal"], conn["callable"]):
+			node.disconnect(conn["signal"], conn["callable"])
+	_enemy_death_connections.clear()
+
+	# Disconnect door trigger signals
+	for conn in _door_connections:
+		var node: Node = conn["node"]
+		if is_instance_valid(node) and node.is_connected(conn["signal"], conn["callable"]):
+			node.disconnect(conn["signal"], conn["callable"])
+	_door_connections.clear()

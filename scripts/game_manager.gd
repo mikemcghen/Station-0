@@ -16,6 +16,7 @@ const RunEndScreenScene = preload("res://scripts/ui/run_end_screen.gd")
 var _run_end_screen: CanvasLayer = null
 
 func _ready() -> void:
+	EventBus.assert_ready()  # Verify autoload order
 	EventBus.run_started.connect(_on_run_started)
 	EventBus.run_ended.connect(_on_run_ended)
 	call_deferred("_load_game")

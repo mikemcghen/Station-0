@@ -11,6 +11,12 @@ const BASE_RANGE       := 400.0
 const BASE_PROJ_SPEED  := 520.0
 
 # ---------------------------------------------------------------------------
+# Stat caching — only recalculate when items/parts change
+# ---------------------------------------------------------------------------
+var _stats_dirty: bool = true
+var _cached_item_count: int = -1  # Track item count to detect external changes
+
+# ---------------------------------------------------------------------------
 # Live stats (recalculated from base + equipped parts + run items)
 # ---------------------------------------------------------------------------
 var speed:          float = BASE_SPEED
@@ -52,6 +58,7 @@ var shield_projector: bool = false
 func _ready() -> void:
 	EventBus.body_part_equipped.connect(_on_part_equipped)
 	EventBus.save_loaded.connect(_on_save_loaded)
+	EventBus.item_collected.connect(_on_item_collected)
 	recalculate()
 	if RunManager.player_health_carry > 0.0:
 		current_health = minf(RunManager.player_health_carry, max_health)
@@ -61,6 +68,7 @@ func _ready() -> void:
 
 func _on_save_loaded() -> void:
 	var old_max := max_health
+	_stats_dirty = true
 	recalculate()
 	# Grant bonus HP from body parts on fresh start
 	if RunManager.player_health_carry < 0.0 and max_health > old_max:
@@ -68,7 +76,23 @@ func _on_save_loaded() -> void:
 	current_health = minf(current_health, max_health)
 	EventBus.player_health_changed.emit(current_health, max_health)
 
+func _on_item_collected(_item: Resource) -> void:
+	_stats_dirty = true
+	recalculate()
+	EventBus.player_health_changed.emit(current_health, max_health)
+
+func mark_dirty() -> void:
+	_stats_dirty = true
+
 func recalculate() -> void:
+	# Skip if stats haven't changed (cached)
+	var current_item_count := RunManager.run_items.size()
+	if not _stats_dirty and _cached_item_count == current_item_count:
+		return
+
+	_cached_item_count = current_item_count
+	_stats_dirty = false
+
 	speed      = BASE_SPEED      + UpgradeManager.get_stat_modifier("speed")
 	max_health = BASE_MAX_HEALTH + UpgradeManager.get_stat_modifier("max_health")
 	damage     = BASE_DAMAGE     + UpgradeManager.get_stat_modifier("damage")
@@ -154,6 +178,7 @@ func heal(amount: float) -> void:
 
 func _on_part_equipped(_part: Resource, _slot: String) -> void:
 	var old_max := max_health
+	_stats_dirty = true
 	recalculate()
 	# If max_health increased, grant the extra HP immediately
 	if max_health > old_max:

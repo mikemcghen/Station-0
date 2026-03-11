@@ -29,6 +29,9 @@ var _shield_flash_timer: float = 0.0   # brief white flash on absorb
 # Oil slick — count of slick zones currently overlapping player
 var _slick_count: int = 0
 
+# Knockback — applied by enemies (e.g., Hivemind pulse)
+var _knockback_velocity: Vector2 = Vector2.ZERO
+
 func _ready() -> void:
 	add_to_group("player")
 	EventBus.room_entered.connect(_on_room_entered)
@@ -42,6 +45,8 @@ func _physics_process(delta: float) -> void:
 	_handle_shooting(delta)
 	_handle_iframes(delta)
 	_handle_shield(delta)
+	# Decay knockback
+	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 800.0 * delta)
 	move_and_slide()
 
 # ---------------------------------------------------------------------------
@@ -61,6 +66,9 @@ func _handle_movement() -> void:
 		velocity = velocity.lerp(input_dir * stats.speed, 0.08)
 	else:
 		velocity = input_dir * stats.speed
+
+	# Apply knockback on top of movement
+	velocity += _knockback_velocity
 
 	if input_dir.x != 0.0:
 		body.scale.x = sign(input_dir.x)
@@ -141,6 +149,7 @@ func _handle_shield(delta: float) -> void:
 
 	if _shield_ready and Input.is_physical_key_pressed(KEY_SPACE):
 		_shield_active = true
+		_shield_ready = false
 
 # ---------------------------------------------------------------------------
 # Iframes — flash body during invincibility
@@ -239,12 +248,18 @@ func _spawn_coolant_zone() -> void:
 
 	zone.body_entered.connect(func(b: Node) -> void:
 		if b.has_method("apply_slow"):
-			b.apply_slow(2.0, 0.4))
+			b.apply_slow(2.0, 0.4)
+	)
+
+	# Use a Timer child for self-cleanup (avoids SceneTreeTimer leak)
+	var timer := Timer.new()
+	timer.wait_time = 1.0
+	timer.one_shot = true
+	timer.timeout.connect(zone.queue_free)
+	zone.add_child(timer)
 
 	get_parent().call_deferred("add_child", zone)
-	get_tree().create_timer(1.0).timeout.connect(func() -> void:
-		if is_instance_valid(zone):
-			zone.queue_free())
+	timer.call_deferred("start")
 
 # ---------------------------------------------------------------------------
 # Oil slick — called by hazard Area2D nodes
@@ -254,6 +269,12 @@ func enter_slick() -> void:
 
 func exit_slick() -> void:
 	_slick_count = maxi(_slick_count - 1, 0)
+
+# ---------------------------------------------------------------------------
+# Knockback — called by enemies (e.g., Hivemind pulse attack)
+# ---------------------------------------------------------------------------
+func apply_knockback(force: Vector2) -> void:
+	_knockback_velocity = force
 
 # ---------------------------------------------------------------------------
 # Room event handlers

@@ -29,25 +29,12 @@ const HEART_SPACING := 52   # px between heart centers
 const ORIGIN        := Vector2(32, 32)   # center of first heart (screen px)
 
 # ---------------------------------------------------------------------------
-# DEPRECATED — Boss bar (commented out)
-# ---------------------------------------------------------------------------
-#const BOSS_BAR_W   := 400.0
-#const BOSS_BAR_H   := 18.0
-#const BOSS_BAR_POS := Vector2(760.0, 1040.0)  # bottom center (1920×1080 viewport)
-
-# ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
 # Each entry: { "bg": Polygon2D, "fill": Polygon2D }
 var _slots: Array = []
 var _credits_label: Label
 var _mini_map: Control
-
-# DEPRECATED — Boss bar nodes (commented out)
-#var _boss_bar_root:  Node2D    = null
-#var _boss_bar_fill:  Polygon2D = null
-#var _boss_bar_label: Label     = null
-#var _boss_max_hp:    float     = 1.0
 
 # ---------------------------------------------------------------------------
 # Boot
@@ -56,9 +43,6 @@ func _ready() -> void:
 	EventBus.player_health_changed.connect(_on_health_changed)
 	EventBus.credits_changed.connect(_on_credits_changed)
 	EventBus.save_loaded.connect(_on_save_loaded)
-	# DEPRECATED — Boss bar signal connections (commented out)
-	#EventBus.boss_health_changed.connect(_on_boss_health_changed)
-	#EventBus.boss_died.connect(_on_boss_died)
 	_build_credits_label()
 	_build_mini_map()
 	# Initialise once the scene is fully set up
@@ -153,69 +137,3 @@ func _on_health_changed(current_hp: float, max_hp: float) -> void:
 		_rebuild(max_hp, current_hp)
 	else:
 		_update_display(current_hp)
-
-# ---------------------------------------------------------------------------
-# DEPRECATED — Boss health bar (commented out)
-# ---------------------------------------------------------------------------
-#var _boss_name: String = ""
-#
-#func _on_boss_health_changed(current_hp: float, max_hp: float, boss_name: String) -> void:
-#	if _boss_bar_root == null:
-#		_build_boss_bar(max_hp, boss_name)
-#	elif _boss_name != boss_name:
-#		# Different boss, update label
-#		_boss_name = boss_name
-#		if _boss_bar_label != null:
-#			_boss_bar_label.text = boss_name
-#	_boss_max_hp = max_hp
-#	_update_boss_bar(current_hp)
-#
-#func _on_boss_died() -> void:
-#	if _boss_bar_root != null:
-#		_boss_bar_root.queue_free()
-#		_boss_bar_root  = null
-#		_boss_bar_fill  = null
-#		_boss_bar_label = null
-#		_boss_name      = ""
-#
-#func _build_boss_bar(max_hp: float, boss_name: String) -> void:
-#	_boss_max_hp = max_hp
-#	_boss_name = boss_name
-#
-#	_boss_bar_root = Node2D.new()
-#	_boss_bar_root.position = BOSS_BAR_POS
-#	add_child(_boss_bar_root)
-#
-#	# Name label
-#	_boss_bar_label = Label.new()
-#	_boss_bar_label.text     = boss_name
-#	_boss_bar_label.position = Vector2(0, -22)
-#	_boss_bar_root.add_child(_boss_bar_label)
-#
-#	# Background
-#	var bg       := Polygon2D.new()
-#	bg.polygon    = PackedVector2Array([
-#		Vector2(0, 0), Vector2(BOSS_BAR_W, 0),
-#		Vector2(BOSS_BAR_W, BOSS_BAR_H), Vector2(0, BOSS_BAR_H),
-#	])
-#	bg.color = Color(0.15, 0.05, 0.05)
-#	_boss_bar_root.add_child(bg)
-#
-#	# Fill
-#	_boss_bar_fill          = Polygon2D.new()
-#	_boss_bar_fill.polygon  = PackedVector2Array([
-#		Vector2(0, 0), Vector2(BOSS_BAR_W, 0),
-#		Vector2(BOSS_BAR_W, BOSS_BAR_H), Vector2(0, BOSS_BAR_H),
-#	])
-#	_boss_bar_fill.color = Color(0.85, 0.1, 0.1)
-#	_boss_bar_root.add_child(_boss_bar_fill)
-#
-#func _update_boss_bar(current_hp: float) -> void:
-#	if _boss_bar_fill == null:
-#		return
-#	var pct  := clampf(current_hp / _boss_max_hp, 0.0, 1.0)
-#	var w    := BOSS_BAR_W * pct
-#	_boss_bar_fill.polygon = PackedVector2Array([
-#		Vector2(0, 0), Vector2(w, 0),
-#		Vector2(w, BOSS_BAR_H), Vector2(0, BOSS_BAR_H),
-#	])

@@ -46,6 +46,9 @@ const DRIFTER_OFFSET_MAX := 80.0
 
 const FREEZE_DURATION := 1.5
 
+const BURST_PROJ_DAMAGE  := 1.0
+const HOMING_PROJ_DAMAGE := 1.0
+
 const DRIFTER_SCENE = preload("res://scenes/enemies/drifter.tscn")
 
 # ---------------------------------------------------------------------------
@@ -228,7 +231,7 @@ func _spawn_burst_proj(dir: Vector2) -> void:
 
 func _on_burst_hit_player(body: Node2D, proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1)
+		body.take_damage(BURST_PROJ_DAMAGE)
 	if is_instance_valid(proj):
 		proj.queue_free()
 
@@ -298,7 +301,7 @@ func _spawn_homing_proj(start_angle: float) -> void:
 
 func _on_homing_hit_player(body: Node2D, proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1)
+		body.take_damage(HOMING_PROJ_DAMAGE)
 	if is_instance_valid(proj):
 		proj.queue_free()
 

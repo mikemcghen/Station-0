@@ -17,8 +17,7 @@ const SPAWN_DELAY: float = 0.5
 
 var _contact_timer: float  = 0.0
 var _flash_timer:   float  = 0.0
-var _slow_factor:   float  = 1.0
-var _slow_timer:    float  = 0.0
+var _slow_effects:  Array[Dictionary] = []  # [{factor, timer}] - stacking slows
 var _spawn_timer:   float  = SPAWN_DELAY
 var _player:        Node2D = null
 
@@ -62,14 +61,24 @@ func _tick_flash(delta: float) -> void:
 		visual.modulate = Color(1.0, 1.0, 1.0)
 
 func apply_slow(duration: float, factor: float) -> void:
-	_slow_factor = factor
-	_slow_timer  = duration
+	# Stack slows by adding new effect - factors multiply together
+	_slow_effects.append({"factor": factor, "timer": duration})
 
 func _tick_slow(delta: float) -> void:
-	if _slow_timer > 0.0:
-		_slow_timer -= delta
-		if _slow_timer <= 0.0:
-			_slow_factor = 1.0
+	# Tick down all slow effects and remove expired ones
+	var i := _slow_effects.size() - 1
+	while i >= 0:
+		_slow_effects[i]["timer"] -= delta
+		if _slow_effects[i]["timer"] <= 0.0:
+			_slow_effects.remove_at(i)
+		i -= 1
+
+func get_slow_factor() -> float:
+	# Multiply all active slow factors together
+	var combined := 1.0
+	for effect in _slow_effects:
+		combined *= effect["factor"]
+	return combined
 
 # ---------------------------------------------------------------------------
 # Damage / death

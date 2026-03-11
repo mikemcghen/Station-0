@@ -57,6 +57,11 @@ const HOMING_LIFETIME  := 7.0   # seconds before homing projectiles expire
 
 const FREEZE_DURATION  := 2.0
 
+const ORBITER_DAMAGE     := 1.0
+const SWEEP_PROJ_DAMAGE  := 1.0
+const BEAM_DAMAGE        := 1.0
+const HOMING_PROJ_DAMAGE := 1.0
+
 const DRIFTER_SCENE  = preload("res://scenes/enemies/drifter.tscn")
 const REPEATER_SCENE = preload("res://scenes/enemies/repeater.tscn")
 const ANCHOR_SCENE   = preload("res://scenes/enemies/anchor.tscn")
@@ -461,7 +466,7 @@ func _create_orbiter(angle: float) -> Dictionary:
 
 func _on_orbiter_hit(body: Node, _proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1.0)
+		body.take_damage(ORBITER_DAMAGE)
 
 
 func _tick_orbiters(delta: float) -> void:
@@ -557,7 +562,7 @@ func _spawn_sweep_proj(pos: Vector2, vel: Vector2) -> void:
 
 func _on_sweep_hit(body: Node, proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1.0)
+		body.take_damage(SWEEP_PROJ_DAMAGE)
 	if is_instance_valid(proj):
 		proj.queue_free()
 
@@ -738,7 +743,7 @@ func _end_beam() -> void:
 
 func _on_beam_hit(body: Node) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1.0)
+		body.take_damage(BEAM_DAMAGE)
 
 
 func _attack_pulse() -> void:
@@ -803,7 +808,7 @@ func _spawn_homing_proj(start_angle: float) -> void:
 
 func _on_homing_hit(body: Node, proj: Node2D) -> void:
 	if body.is_in_group("player") and body.has_method("take_damage"):
-		body.take_damage(1.0)
+		body.take_damage(HOMING_PROJ_DAMAGE)
 	if is_instance_valid(proj):
 		proj.queue_free()
 

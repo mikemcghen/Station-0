@@ -1,6 +1,19 @@
 extends Node
 
 # ---------------------------------------------------------------------------
+# Initialization Order Validation
+# ---------------------------------------------------------------------------
+# EventBus must be the first autoload. Other autoloads depend on it.
+# See project.godot for full dependency graph.
+static var _initialized: bool = false
+
+func _ready() -> void:
+	_initialized = true
+
+static func assert_ready() -> void:
+	assert(_initialized, "EventBus not initialized. Check autoload order in project.godot.")
+
+# ---------------------------------------------------------------------------
 # Save System
 # ---------------------------------------------------------------------------
 signal save_loaded

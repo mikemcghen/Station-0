@@ -1,5 +1,8 @@
 extends Node
 
+func _ready() -> void:
+	EventBus.assert_ready()  # Verify autoload order
+
 var current_floor: int = 0
 var current_room_id: String = ""
 var run_active: bool = false

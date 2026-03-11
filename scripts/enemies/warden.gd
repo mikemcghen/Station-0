@@ -37,6 +37,9 @@ const MINE_AOE       := 70.0
 
 const FREEZE_DURATION := 1.5
 
+const SWEEP_PROJ_DAMAGE := 1.0
+const MINE_DAMAGE       := 1.0
+
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
@@ -215,7 +218,7 @@ func _spawn_sweep_proj(world_pos: Vector2, vel: Vector2) -> void:
 	area.add_child(cs)
 	area.body_entered.connect(func(body: Node) -> void:
 		if body.is_in_group("player"):
-			body.take_damage(1.0)
+			body.take_damage(SWEEP_PROJ_DAMAGE)
 			proj.queue_free())
 	proj.add_child(area)
 
@@ -321,7 +324,7 @@ func _explode_mine(entry: Dictionary) -> void:
 	if _player != null and is_instance_valid(_player):
 		var dist := node.global_position.distance_to(_player.global_position)
 		if dist <= MINE_AOE:
-			_player.take_damage(1.0)
+			_player.take_damage(MINE_DAMAGE)
 
 	# Brief visual flash for explosion (optional: could add particle later)
 	var flash := Polygon2D.new()
