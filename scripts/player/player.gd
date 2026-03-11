@@ -64,7 +64,7 @@ func _handle_movement() -> void:
 
 	if _slick_count > 0:
 		# Oil slick — 40% slower + momentum-based movement
-		var slick_speed := stats.speed * 0.6
+		var slick_speed: float = stats.speed * 0.6
 		velocity = velocity.lerp(input_dir * slick_speed, 0.12)
 	else:
 		velocity = input_dir * stats.speed
