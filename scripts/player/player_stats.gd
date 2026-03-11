@@ -158,7 +158,7 @@ func _apply_run_items() -> void:
 				fragmented_map = true
 			RunItem.Effect.OVERCLOCK:
 				overclock = true
-				fire_rate *= 1.6
+				fire_rate *= 1.4
 
 func _apply_part_flags() -> void:
 	shield_projector = false

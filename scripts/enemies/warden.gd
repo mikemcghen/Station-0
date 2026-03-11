@@ -371,7 +371,6 @@ func take_damage(amount: float) -> void:
 	current_health -= amount
 	_flash_timer    = 0.1
 	AudioManager.play("enemy_hit")
-	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health, "THE WARDEN")
 	if current_health <= 0.0:
 		_enter_climax()
 

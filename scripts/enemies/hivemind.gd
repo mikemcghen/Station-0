@@ -334,9 +334,6 @@ func _enter_active() -> void:
 	# Spawn 6 static orbiting projectiles
 	_spawn_orbiters()
 
-	# Emit boss health bar start
-	EventBus.boss_health_changed.emit(current_health, max_health, "THE HIVEMIND")
-
 
 # ---------------------------------------------------------------------------
 # Phase 2 — Active (teleport + orbiters + sweep)
@@ -864,7 +861,6 @@ func take_damage(amount: float) -> void:
 	current_health -= amount
 	_flash_timer = 0.1
 	AudioManager.play("enemy_hit")
-	EventBus.boss_health_changed.emit(maxf(current_health, 0.0), max_health, "THE HIVEMIND")
 
 	if current_health <= 0.0:
 		_enter_climax()

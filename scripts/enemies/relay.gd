@@ -370,7 +370,6 @@ func take_damage(amount: float) -> void:
 
 	current_health -= amount
 	AudioManager.play("enemy_hit")
-	EventBus.boss_health_changed.emit(current_health, max_health, "THE RELAY")
 
 	if current_health <= 5.0 and _phase != Phase.CLIMAX:
 		_enter_climax()

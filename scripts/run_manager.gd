@@ -22,6 +22,9 @@ var npc_ids_on_run: Array[String] = []
 # --- Floor-to-floor carry (not saved, only lives for one scene reload) ---
 var player_health_carry: float = -1.0   # -1 = no carry, use default full health
 
+# --- Hub spawn flag (cleared after hub reads it) ---
+var returning_from_run: bool = false
+
 func start_run(brought_credits: int, brought_buffs: Array[Resource], brought_npc_ids: Array[String]) -> void:
 	current_floor = 1
 	current_room_id = ""
@@ -38,6 +41,7 @@ func start_run(brought_credits: int, brought_buffs: Array[Resource], brought_npc
 
 func end_run(player_survived: bool) -> void:
 	run_active = false
+	returning_from_run = true
 	if player_survived:
 		_apply_run_rewards()
 	else:

@@ -28,8 +28,6 @@ const SHOP_PEDESTAL_SCR = preload("res://scripts/items/shop_item_pedestal.gd")
 const STATION_DOOR_SCR  = preload("res://scripts/rooms/station_door.gd")
 
 const ALL_PART_PATHS: Array[String] = [
-	"res://data/body_parts/head_wide_angle_lens.tres",
-	"res://data/body_parts/head_targeting_spike.tres",
 	"res://data/body_parts/torso_reinforced_chassis.tres",
 	"res://data/body_parts/torso_lightweight_frame.tres",
 	"res://data/body_parts/left_arm_scatter_emitter.tres",
@@ -47,6 +45,8 @@ const ALL_ITEM_PATHS: Array[String] = [
 	"res://data/run_items/static_discharge.tres",
 	"res://data/run_items/fragmented_map.tres",
 	"res://data/run_items/patch_kit.tres",
+	"res://data/run_items/plating_shard.tres",
+	"res://data/run_items/range_booster.tres",
 ]
 
 # ---------------------------------------------------------------------------
@@ -380,6 +380,10 @@ func _spawn_entry_door() -> void:
 
 
 func _spawn_body_part_drop() -> void:
+	# 50% drop chance so body parts feel more valuable
+	if randf() > 0.5:
+		return
+
 	# Drop a random part the player hasn't yet acquired
 	var unacquired: Array[String] = []
 	for path in ALL_PART_PATHS:
@@ -518,10 +522,24 @@ func _make_exposed_wiring() -> void:
 	poly.color = Color(1.0, 0.85, 0.05, 0.90)
 	area.add_child(poly)
 
-	# Damage on contact — player iframes act as natural cooldown
+	# Continuous damage while overlapping — timer ticks damage, player iframes limit actual hits
+	var overlapping_players: Array[Node] = []
+	var damage_timer := Timer.new()
+	damage_timer.wait_time = 0.3
+	damage_timer.autostart = true
+	damage_timer.timeout.connect(func() -> void:
+		for b in overlapping_players:
+			if is_instance_valid(b) and b.has_method("take_damage"):
+				b.take_damage(1.0))
+	area.add_child(damage_timer)
+
 	area.body_entered.connect(func(b: Node) -> void:
-		if b.is_in_group("player") and b.has_method("take_damage"):
-			b.take_damage(1.0))
+		if b.is_in_group("player"):
+			overlapping_players.append(b)
+			if b.has_method("take_damage"):
+				b.take_damage(1.0))
+	area.body_exited.connect(func(b: Node) -> void:
+		overlapping_players.erase(b))
 
 	contents.add_child(area)
 

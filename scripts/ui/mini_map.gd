@@ -26,6 +26,7 @@ const ROOM_COLORS := {
 }
 const CURRENT_OUTLINE := Color(1.0, 1.0, 0.4)   # bright yellow
 const CONNECTION_COLOR := Color(0.5, 0.5, 0.6)
+const UNVISITED_COLOR := Color(0.3, 0.3, 0.35)   # generic grey for fog of war
 const UNVISITED_ALPHA := 0.35
 const BACKGROUND_COLOR := Color(0.08, 0.08, 0.10, 0.85)
 
@@ -193,9 +194,12 @@ func _draw() -> void:
 		var map_pos := _grid_to_map_pos(pos)
 		var rect := Rect2(map_pos, ROOM_SIZE)
 
-		# Room color with alpha based on visited state
-		var color: Color = ROOM_COLORS.get(room.type, ROOM_COLORS[RoomData.RoomType.COMBAT])
-		if not is_visited:
+		# Fog of war: unvisited rooms show as generic grey (hide type info)
+		var color: Color
+		if is_visited:
+			color = ROOM_COLORS.get(room.type, ROOM_COLORS[RoomData.RoomType.COMBAT])
+		else:
+			color = UNVISITED_COLOR
 			color.a = UNVISITED_ALPHA
 		draw_rect(rect, color)
 

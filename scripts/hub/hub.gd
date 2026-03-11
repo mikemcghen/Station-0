@@ -72,11 +72,19 @@ func _build_hub() -> void:
 		room_node.setup(room_type, conn, self)
 		_rooms[grid_pos] = room_node
 
-	# Start in Staging Area; player spawns below center so the portal is visible
+	# Start in Staging Area
 	var staging_world := _grid_to_world(Vector2i(0, 0))
-	camera.position        = staging_world
-	player.global_position = staging_world + Vector2(0, 80)
-	_current_grid          = Vector2i(0, 0)
+	camera.position   = staging_world
+	_current_grid     = Vector2i(0, 0)
+
+	# Spawn position depends on whether returning from a run
+	if RunManager.returning_from_run:
+		# Spawn at the run portal door (portal is at y=-150, spawn just below it)
+		player.global_position = staging_world + Vector2(0, -100)
+		RunManager.returning_from_run = false
+	else:
+		# Default spawn below center so the portal is visible
+		player.global_position = staging_world + Vector2(0, 80)
 
 
 func _compute_connections() -> Dictionary:
