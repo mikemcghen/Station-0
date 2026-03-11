@@ -39,6 +39,7 @@ var _grid_min: Vector2i = Vector2i.ZERO
 var _grid_max: Vector2i = Vector2i.ZERO
 var _parallax_offset: Vector2 = Vector2.ZERO
 var _player: Node2D = null
+var _revealed_positions: Array[Vector2i] = []  # rooms revealed by Fragmented Map
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -59,6 +60,7 @@ func _ready() -> void:
 	EventBus.floor_map_ready.connect(_on_floor_map_ready)
 	EventBus.room_entered_at.connect(_on_room_entered)
 	EventBus.run_ended.connect(_on_run_ended)
+	EventBus.room_revealed.connect(_on_room_revealed)
 
 # ---------------------------------------------------------------------------
 # Signal handlers
@@ -76,7 +78,19 @@ func _on_room_entered(grid_pos: Vector2i) -> void:
 
 func _on_run_ended(_reached_hub: bool) -> void:
 	_rooms_data.clear()
+	_revealed_positions.clear()
 	_player = null
+	queue_redraw()
+
+
+func _on_room_revealed() -> void:
+	# Fragmented Map effect: reveal types of adjacent unvisited rooms
+	if not _rooms_data.has(_current_pos):
+		return
+	var current_room: RoomData = _rooms_data[_current_pos]
+	for conn_pos in current_room.connections.values():
+		if conn_pos not in _revealed_positions:
+			_revealed_positions.append(conn_pos)
 	queue_redraw()
 
 
@@ -195,9 +209,13 @@ func _draw() -> void:
 		var rect := Rect2(map_pos, ROOM_SIZE)
 
 		# Fog of war: unvisited rooms show as generic grey (hide type info)
+		# Exception: revealed rooms (Fragmented Map) show their type dimmed
 		var color: Color
 		if is_visited:
 			color = ROOM_COLORS.get(room.type, ROOM_COLORS[RoomData.RoomType.COMBAT])
+		elif pos in _revealed_positions:
+			color = ROOM_COLORS.get(room.type, ROOM_COLORS[RoomData.RoomType.COMBAT])
+			color.a = UNVISITED_ALPHA
 		else:
 			color = UNVISITED_COLOR
 			color.a = UNVISITED_ALPHA

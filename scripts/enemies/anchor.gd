@@ -99,13 +99,14 @@ func _do_anchored(delta: float) -> void:
 		_shot_timer = SHOT_COOLDOWN
 
 func _fire_at_player() -> void:
+	# Fire at player's current position (not homing - player can dodge)
 	var dir  := (_player.global_position - global_position).normalized()
 	var proj = ENEMY_PROJECTILE.instantiate()
 	proj.position      = (get_parent() as Node2D).to_local(global_position)
 	proj.direction     = dir
-	proj.speed         = 120.0
+	proj.speed         = 180.0  # faster since not homing
 	proj.damage        = 1.0
 	proj.max_range     = 720.0
-	proj.homing        = true
-	proj.homing_target = _player
+	proj.homing        = false
+	AudioManager.play("enemy_shoot")
 	get_parent().call_deferred("add_child", proj)

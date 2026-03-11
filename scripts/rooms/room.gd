@@ -107,7 +107,6 @@ func activate() -> void:
 			_spawn_shop()
 			data.cleared = true
 		RoomData.RoomType.START:
-			_spawn_entry_door()
 			data.cleared = true
 		_:
 			data.cleared = true
@@ -377,15 +376,6 @@ func _on_floor_exit_entered(body: Node) -> void:
 		get_tree().call_deferred("change_scene_to_file", "res://scenes/run/floor.tscn")
 
 
-func _spawn_entry_door() -> void:
-	# Decorative open door behind spawn point - shows "you entered from here"
-	# Positioned at bottom of room (player spawns in center, door behind them)
-	var entry_door := StationDoor.new()
-	entry_door.position = Vector2(0, ROOM_H / 2.0 - 80)  # near bottom wall
-	entry_door.setup_entry_door()
-	contents.add_child(entry_door)
-
-
 func _spawn_body_part_drop() -> void:
 	# 50% drop chance so body parts feel more valuable
 	if randf() > 0.5:
@@ -407,7 +397,14 @@ func _spawn_body_part_drop() -> void:
 	contents.add_child(pickup)
 
 func _spawn_run_item() -> void:
-	var chosen: String = ALL_ITEM_PATHS[randi() % ALL_ITEM_PATHS.size()]
+	# Exclude Patch Kit from item rooms (shop-only item)
+	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
+	var item_pool: Array[String] = []
+	for p in ALL_ITEM_PATHS:
+		if p != PATCH_KIT_PATH:
+			item_pool.append(p)
+
+	var chosen: String = item_pool[randi() % item_pool.size()]
 	var pickup         = RUN_ITEM_PICKUP.instantiate()
 	pickup.item        = load(chosen)
 	pickup.position    = Vector2.ZERO
