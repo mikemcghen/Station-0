@@ -66,6 +66,29 @@ const HOMING_PROJ_DAMAGE := 1.0
 const DRIFTER_SCENE  = preload("res://scenes/enemies/drifter.tscn")
 const REPEATER_SCENE = preload("res://scenes/enemies/repeater.tscn")
 const ANCHOR_SCENE   = preload("res://scenes/enemies/anchor.tscn")
+const BODY_PART_PICKUP = preload("res://scenes/upgrades/body_part_pickup.tscn")
+const RUN_ITEM_PICKUP  = preload("res://scenes/items/run_item_pickup.tscn")
+
+const ALL_PART_PATHS: Array[String] = [
+	"res://data/body_parts/torso_reinforced_chassis.tres",
+	"res://data/body_parts/torso_lightweight_frame.tres",
+	"res://data/body_parts/left_arm_scatter_emitter.tres",
+	"res://data/body_parts/left_arm_shield_projector.tres",
+	"res://data/body_parts/right_arm_heavy_emitter.tres",
+	"res://data/body_parts/right_arm_rapid_emitter.tres",
+]
+
+const ALL_ITEM_PATHS: Array[String] = [
+	"res://data/run_items/coolant_leak.tres",
+	"res://data/run_items/overclock_module.tres",
+	"res://data/run_items/scrap_magnet.tres",
+	"res://data/run_items/memory_spike.tres",
+	"res://data/run_items/rust_coat.tres",
+	"res://data/run_items/static_discharge.tres",
+	"res://data/run_items/fragmented_map.tres",
+	"res://data/run_items/plating_shard.tres",
+	"res://data/run_items/range_booster.tres",
+]
 
 # ---------------------------------------------------------------------------
 # State
@@ -268,6 +291,22 @@ func _on_enemy_died(enemy: Node) -> void:
 	_spawned_enemies.erase(enemy)
 	_wave_enemies.erase(enemy)
 
+	# Play assembly sound per enemy absorbed
+	AudioManager.play("hivemind_assembly")
+
+	# Defer visual effect to avoid tree manipulation errors
+	call_deferred("_spawn_soul_particle")
+
+	# Check if wave is cleared — spawn next wave
+	if _wave_enemies.size() == 0 and _wave_index < WAVE_COUNT:
+		_wave_index += 1
+		_wave_spawned = false  # allow next wave to spawn
+
+
+func _spawn_soul_particle() -> void:
+	if not is_inside_tree():
+		return
+
 	# Create purple dot flying to center
 	var part := Polygon2D.new()
 	var pts := PackedVector2Array()
@@ -276,7 +315,6 @@ func _on_enemy_died(enemy: Node) -> void:
 		pts.append(Vector2(cos(a), sin(a)) * randf_range(8.0, 14.0))
 	part.polygon = pts
 	part.color = Color(0.5, 0.2, 0.6, 0.9)
-	# Position at edge since we don't know exact death position
 	part.global_position = _room_center + Vector2(randf_range(-150, 150), randf_range(-150, 150))
 	get_parent().add_child(part)
 
@@ -286,11 +324,6 @@ func _on_enemy_died(enemy: Node) -> void:
 	tw.tween_callback(_grow_core)
 	tw.tween_property(part, "modulate:a", 0.0, 0.2)
 	tw.tween_callback(part.queue_free)
-
-	# Check if wave is cleared — spawn next wave
-	if _wave_enemies.size() == 0 and _wave_index < WAVE_COUNT:
-		_wave_index += 1
-		_wave_spawned = false  # allow next wave to spawn
 
 
 func _grow_core() -> void:
@@ -508,6 +541,7 @@ func _clear_orbiters() -> void:
 # Sweep Attack (from Warden)
 # ---------------------------------------------------------------------------
 func _attack_sweep() -> void:
+	AudioManager.play("hivemind_sweep")
 	var inner_left  := -ROOM_HW + WALL_T
 	var inner_right :=  ROOM_HW - WALL_T
 	var sweep_dir   := 1.0 if randf() < 0.5 else -1.0
@@ -944,5 +978,30 @@ func _die() -> void:
 	_spawned_enemies.clear()
 	_wave_enemies.clear()
 
+	# Always spawn item pickup
+	_spawn_item_drop()
+	# Also spawn body part if player doesn't have all
+	_spawn_body_part_drop()
+
 	EventBus.boss_died.emit()
 	queue_free()
+
+func _spawn_item_drop() -> void:
+	var chosen: String = ALL_ITEM_PATHS[randi() % ALL_ITEM_PATHS.size()]
+	var pickup = RUN_ITEM_PICKUP.instantiate()
+	pickup.item = load(chosen)
+	pickup.global_position = global_position + Vector2(-30, 0)
+	get_parent().add_child(pickup)
+
+func _spawn_body_part_drop() -> void:
+	var unacquired: Array[String] = []
+	for path in ALL_PART_PATHS:
+		if path not in UpgradeManager.acquired_part_paths:
+			unacquired.append(path)
+	if unacquired.is_empty():
+		return
+	var chosen: String = unacquired[randi() % unacquired.size()]
+	var pickup = BODY_PART_PICKUP.instantiate()
+	pickup.part = load(chosen)
+	pickup.global_position = global_position + Vector2(30, 0)
+	get_parent().add_child(pickup)

@@ -50,6 +50,29 @@ const BURST_PROJ_DAMAGE  := 1.0
 const HOMING_PROJ_DAMAGE := 1.0
 
 const DRIFTER_SCENE = preload("res://scenes/enemies/drifter.tscn")
+const BODY_PART_PICKUP = preload("res://scenes/upgrades/body_part_pickup.tscn")
+const RUN_ITEM_PICKUP  = preload("res://scenes/items/run_item_pickup.tscn")
+
+const ALL_PART_PATHS: Array[String] = [
+	"res://data/body_parts/torso_reinforced_chassis.tres",
+	"res://data/body_parts/torso_lightweight_frame.tres",
+	"res://data/body_parts/left_arm_scatter_emitter.tres",
+	"res://data/body_parts/left_arm_shield_projector.tres",
+	"res://data/body_parts/right_arm_heavy_emitter.tres",
+	"res://data/body_parts/right_arm_rapid_emitter.tres",
+]
+
+const ALL_ITEM_PATHS: Array[String] = [
+	"res://data/run_items/coolant_leak.tres",
+	"res://data/run_items/overclock_module.tres",
+	"res://data/run_items/scrap_magnet.tres",
+	"res://data/run_items/memory_spike.tres",
+	"res://data/run_items/rust_coat.tres",
+	"res://data/run_items/static_discharge.tres",
+	"res://data/run_items/fragmented_map.tres",
+	"res://data/run_items/plating_shard.tres",
+	"res://data/run_items/range_booster.tres",
+]
 
 # ---------------------------------------------------------------------------
 # State
@@ -130,6 +153,7 @@ func _tick_teleport(delta: float) -> void:
 				_reappear()
 
 func _start_fade_out() -> void:
+	AudioManager.play("relay_teleport")
 	_tp_state = TeleportState.FADING_OUT
 	_fade_timer = FADE_OUT_TIME
 
@@ -142,7 +166,6 @@ func _enter_transit() -> void:
 	_transit_timer = TRANSIT_TIME
 
 func _reappear() -> void:
-	AudioManager.play("relay_teleport")
 	# Pick random position within room bounds
 	var min_x := _room_center.x - ROOM_HW + WALL_T + WALL_MARGIN
 	var max_x := _room_center.x + ROOM_HW - WALL_T - WALL_MARGIN
@@ -362,6 +385,11 @@ func _spawn_drifters() -> void:
 		var offset := Vector2.from_angle(randf() * TAU) * randf_range(DRIFTER_OFFSET_MIN, DRIFTER_OFFSET_MAX)
 		get_parent().add_child(drifter)
 		drifter.global_position = global_position + offset
+		# Signal drifters: weaker than normal drifters
+		drifter.max_health = drifter.max_health * 0.5
+		drifter.current_health = drifter.max_health
+		drifter.speed = drifter.speed * 0.7
+		drifter.scale = Vector2(0.7, 0.7)
 
 # ---------------------------------------------------------------------------
 # Damage / Phase
@@ -416,7 +444,6 @@ func _tick_climax(delta: float) -> void:
 
 func _die() -> void:
 	AudioManager.play("enemy_death")
-	EventBus.boss_died.emit()
 
 	# Cleanup burst projectiles
 	for proj in _burst_projs:
@@ -430,4 +457,30 @@ func _die() -> void:
 			proj.queue_free()
 	_homing_projs.clear()
 
+	# Always spawn item pickup
+	_spawn_item_drop()
+	# Also spawn body part if player doesn't have all
+	_spawn_body_part_drop()
+
+	EventBus.boss_died.emit()
 	queue_free()
+
+func _spawn_item_drop() -> void:
+	var chosen: String = ALL_ITEM_PATHS[randi() % ALL_ITEM_PATHS.size()]
+	var pickup = RUN_ITEM_PICKUP.instantiate()
+	pickup.item = load(chosen)
+	pickup.global_position = global_position + Vector2(-30, 0)
+	get_parent().add_child(pickup)
+
+func _spawn_body_part_drop() -> void:
+	var unacquired: Array[String] = []
+	for path in ALL_PART_PATHS:
+		if path not in UpgradeManager.acquired_part_paths:
+			unacquired.append(path)
+	if unacquired.is_empty():
+		return
+	var chosen: String = unacquired[randi() % unacquired.size()]
+	var pickup = BODY_PART_PICKUP.instantiate()
+	pickup.part = load(chosen)
+	pickup.global_position = global_position + Vector2(30, 0)
+	get_parent().add_child(pickup)

@@ -240,12 +240,39 @@ func _die() -> void:
 # Static Discharge — instant AoE damage to enemies in radius
 # ---------------------------------------------------------------------------
 func _trigger_static_discharge() -> void:
+	# Visual: yellow flash on player
+	_spawn_discharge_flash()
+
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy):
 			continue
 		if global_position.distance_to(enemy.global_position) <= stats.discharge_radius:
 			if enemy.has_method("take_damage"):
-				enemy.take_damage(stats.discharge_damage)
+				var damage := stats.discharge_damage
+				# Bonus damage to slowed enemies
+				var is_slowed := false
+				if enemy.get("is_slowed"):
+					is_slowed = true
+				elif enemy.get("_slow_timer") != null and enemy._slow_timer > 0:
+					is_slowed = true
+				if is_slowed:
+					damage *= 1.5
+				enemy.take_damage(damage)
+
+func _spawn_discharge_flash() -> void:
+	var flash := Polygon2D.new()
+	var pts := PackedVector2Array()
+	for i in 16:
+		var a := TAU * i / 16.0
+		pts.append(Vector2(cos(a), sin(a)) * stats.discharge_radius)
+	flash.polygon = pts
+	flash.color = Color(1.0, 0.9, 0.2, 0.6)  # yellow flash
+	flash.global_position = global_position
+	get_parent().add_child(flash)
+
+	var tw := flash.create_tween()
+	tw.tween_property(flash, "modulate:a", 0.0, 0.2)
+	tw.tween_callback(flash.queue_free)
 
 # ---------------------------------------------------------------------------
 # Coolant Leak — spawn a temporary slow zone at player position (1s)
@@ -261,6 +288,16 @@ func _spawn_coolant_zone() -> void:
 	cs.shape  = sh
 	zone.add_child(cs)
 	zone.position = (get_parent() as Node2D).to_local(global_position)
+
+	# Visual: blue tint zone indicator
+	var visual := Polygon2D.new()
+	var pts := PackedVector2Array()
+	for i in 12:
+		var a := TAU * i / 12.0
+		pts.append(Vector2(cos(a), sin(a)) * 24.0)
+	visual.polygon = pts
+	visual.color = Color(0.3, 0.6, 1.0, 0.4)  # blue tint
+	zone.add_child(visual)
 
 	zone.body_entered.connect(func(b: Node) -> void:
 		if b.has_method("apply_slow"):

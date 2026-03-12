@@ -84,13 +84,17 @@ func _on_run_ended(_reached_hub: bool) -> void:
 
 
 func _on_room_revealed() -> void:
-	# Fragmented Map effect: reveal types of adjacent unvisited rooms
+	# Fragmented Map effect: reveal types of adjacent unvisited COMBAT rooms only
 	if not _rooms_data.has(_current_pos):
 		return
 	var current_room: RoomData = _rooms_data[_current_pos]
 	for conn_pos in current_room.connections.values():
 		if conn_pos not in _revealed_positions:
-			_revealed_positions.append(conn_pos)
+			if _rooms_data.has(conn_pos):
+				var room: RoomData = _rooms_data[conn_pos]
+				# Only reveal COMBAT rooms, skip ITEM, SHOP, BOSS
+				if room.type == RoomData.RoomType.COMBAT:
+					_revealed_positions.append(conn_pos)
 	queue_redraw()
 
 

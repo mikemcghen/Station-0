@@ -50,8 +50,12 @@ func play(sound_name: String) -> void:
 		push_warning("AudioManager: Unknown sound '%s'" % sound_name)
 		return
 
+	var stream = _sounds[sound_name]
+	if stream == null:
+		return  # File doesn't exist yet, skip silently
+
 	var player := _pool[_pool_index]
 	_pool_index = (_pool_index + 1) % POOL_SIZE
 
-	player.stream = _sounds[sound_name]
+	player.stream = stream
 	player.play()

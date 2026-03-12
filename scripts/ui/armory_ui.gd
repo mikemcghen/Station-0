@@ -126,8 +126,11 @@ const DEFAULT_PARTS: Array[String] = [
 func _rebuild_items() -> void:
 	_items.clear()
 
-	# Add default parts first (always available)
+	# Add default parts first (always available), except default_head
 	for path: String in DEFAULT_PARTS:
+		# Skip default head - not shown as equippable
+		if "head_default" in path:
+			continue
 		var part := load(path) as BodyPartData
 		if part:
 			_items.append(part)
