@@ -397,18 +397,13 @@ func _spawn_body_part_drop() -> void:
 	contents.add_child(pickup)
 
 func _spawn_run_item() -> void:
-	# Exclude Patch Kit from item rooms (shop-only item) and already collected items
+	# Exclude shop-only items (Patch Kit) and already collected/spawned items
 	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
 	var item_pool: Array[String] = []
 	for p in ALL_ITEM_PATHS:
 		if p == PATCH_KIT_PATH:
 			continue
-		var already_collected := false
-		for collected in RunManager.run_items:
-			if collected.resource_path == p:
-				already_collected = true
-				break
-		if not already_collected:
+		if RunManager.is_item_available(p):
 			item_pool.append(p)
 
 	if item_pool.is_empty():
@@ -416,6 +411,7 @@ func _spawn_run_item() -> void:
 		return
 
 	var chosen: String = item_pool[randi() % item_pool.size()]
+	RunManager.reserve_item(chosen)  # Mark as spawned so other rooms won't use it
 	var pickup         = RUN_ITEM_PICKUP.instantiate()
 	pickup.item        = load(chosen)
 	pickup.position    = Vector2.ZERO
@@ -597,64 +593,58 @@ func _make_exposed_wiring() -> void:
 	contents.add_child(area)
 
 # ---------------------------------------------------------------------------
-# Shop spawning — 2 random items + 1 Patch Kit, spaced horizontally
+# Shop spawning — 2 random items + Patch Kit (restocking heal item)
 # ---------------------------------------------------------------------------
 func _spawn_shop() -> void:
-	# Item slot paths (exclude Patch Kit and already collected items from the random pool)
 	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
+
+	# Build random item pool (exclude Patch Kit which has its own slot)
 	var item_pool: Array[String] = []
 	for p in ALL_ITEM_PATHS:
 		if p == PATCH_KIT_PATH:
 			continue
-		var already_collected := false
-		for collected in RunManager.run_items:
-			if collected.resource_path == p:
-				already_collected = true
-				break
-		if not already_collected:
+		if RunManager.is_item_available(p):
 			item_pool.append(p)
 	item_pool.shuffle()
 
-	# Positions: left item, center item, right = Patch Kit
+	# Positions: left = random, center = random, right = Patch Kit
 	var positions: Array[Vector2] = [
 		Vector2(-200, 0),
 		Vector2(   0, 0),
 		Vector2( 200, 0),
 	]
 
-	# Check if Patch Kit was already collected
-	var patch_kit_collected := false
-	for collected in RunManager.run_items:
-		if collected.resource_path == PATCH_KIT_PATH:
-			patch_kit_collected = true
-			break
+	# Slot 0: Random item
+	if item_pool.size() > 0:
+		RunManager.reserve_item(item_pool[0])
+		var pedestal := Area2D.new()
+		pedestal.set_script(SHOP_PEDESTAL_SCR)
+		pedestal.position = positions[0]
+		pedestal.set("item", load(item_pool[0]))
+		pedestal.set("price", 20)
+		contents.add_child(pedestal)
+	else:
+		_spawn_out_of_stock_marker(positions[0])
 
-	var prices: Array[int] = [20, 20, 10]
+	# Slot 1: Random item
+	if item_pool.size() > 1:
+		RunManager.reserve_item(item_pool[1])
+		var pedestal := Area2D.new()
+		pedestal.set_script(SHOP_PEDESTAL_SCR)
+		pedestal.position = positions[1]
+		pedestal.set("item", load(item_pool[1]))
+		pedestal.set("price", 20)
+		contents.add_child(pedestal)
+	else:
+		_spawn_out_of_stock_marker(positions[1])
 
-	for i in 3:
-		var pos: Vector2 = positions[i]
-		if i == 2:
-			# Patch Kit slot
-			if patch_kit_collected:
-				_spawn_out_of_stock_marker(pos)
-			else:
-				var pedestal := Area2D.new()
-				pedestal.set_script(SHOP_PEDESTAL_SCR)
-				pedestal.position = pos
-				pedestal.set("item", load(PATCH_KIT_PATH))
-				pedestal.set("price", prices[i])
-				contents.add_child(pedestal)
-		else:
-			# Random item slots
-			if i < item_pool.size():
-				var pedestal := Area2D.new()
-				pedestal.set_script(SHOP_PEDESTAL_SCR)
-				pedestal.position = pos
-				pedestal.set("item", load(item_pool[i]))
-				pedestal.set("price", prices[i])
-				contents.add_child(pedestal)
-			else:
-				_spawn_out_of_stock_marker(pos)
+	# Slot 2: Patch Kit (always available, restocks after purchase)
+	var patch_pedestal := Area2D.new()
+	patch_pedestal.set_script(SHOP_PEDESTAL_SCR)
+	patch_pedestal.position = positions[2]
+	patch_pedestal.set("item", load(PATCH_KIT_PATH))
+	patch_pedestal.set("price", 10)
+	contents.add_child(patch_pedestal)
 
 # ---------------------------------------------------------------------------
 # Door locking

@@ -22,6 +22,9 @@ var npc_ids_on_run: Array[String] = []
 # --- Floor-to-floor carry (not saved, only lives for one scene reload) ---
 var player_health_carry: float = -1.0   # -1 = no carry, use default full health
 
+# --- Spawned items on current floor (prevents duplicates across rooms) ---
+var spawned_item_paths: Array[String] = []
+
 # --- Hub spawn flag (cleared after hub reads it) ---
 var returning_from_run: bool = false
 
@@ -32,6 +35,7 @@ func start_run(brought_credits: int, brought_buffs: Array[Resource], brought_npc
 	player_health_carry = -1.0
 	run_items.clear()
 	card_packs_found.clear()
+	spawned_item_paths.clear()
 	credits_brought_in = brought_credits
 	run_credits = brought_credits
 	buff_items_brought = brought_buffs.duplicate()
@@ -51,10 +55,36 @@ func end_run(player_survived: bool) -> void:
 func advance_floor() -> void:
 	EventBus.floor_cleared.emit(current_floor)
 	current_floor += 1
+	spawned_item_paths.clear()  # Reset for new floor
 
 func collect_item(item: Resource) -> void:
 	run_items.append(item)
 	EventBus.item_collected.emit(item)
+
+# ---------------------------------------------------------------------------
+# Item spawn tracking — prevents same item appearing in multiple rooms
+# ---------------------------------------------------------------------------
+const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
+
+func is_item_available(path: String) -> bool:
+	# Patch Kit always restocks - can be purchased multiple times
+	if path == PATCH_KIT_PATH:
+		return true
+	# Check if already collected
+	for collected in run_items:
+		if collected.resource_path == path:
+			return false
+	# Check if already spawned on this floor
+	if path in spawned_item_paths:
+		return false
+	return true
+
+func reserve_item(path: String) -> void:
+	# Don't reserve Patch Kit - it can appear in multiple places
+	if path == PATCH_KIT_PATH:
+		return
+	if path not in spawned_item_paths:
+		spawned_item_paths.append(path)
 
 func collect_card_pack(pack: Resource) -> void:
 	card_packs_found.append(pack)
@@ -81,6 +111,7 @@ func _apply_run_rewards() -> void:
 	# Run items are non-permanent — clear them (body parts stay via UpgradeManager)
 	run_items.clear()
 	card_packs_found.clear()
+	spawned_item_paths.clear()
 	# Health resets on hub return — do not carry it over
 	player_health_carry = -1.0
 	# NPCs survive
@@ -91,6 +122,7 @@ func _apply_run_death() -> void:
 	# Everything brought in / found is lost
 	run_items.clear()
 	card_packs_found.clear()
+	spawned_item_paths.clear()
 	run_credits = 0
 	credits_brought_in = 0
 	buff_items_brought.clear()

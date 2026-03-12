@@ -420,19 +420,18 @@ func _die() -> void:
 	queue_free()
 
 func _spawn_item_drop() -> void:
-	# Filter out already collected items
+	# Filter out shop-only items and already collected/spawned items
+	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
 	var available: Array[String] = []
 	for path in ALL_ITEM_PATHS:
-		var dominated := false
-		for collected in RunManager.run_items:
-			if collected.resource_path == path:
-				dominated = true
-				break
-		if not dominated:
+		if path == PATCH_KIT_PATH:
+			continue
+		if RunManager.is_item_available(path):
 			available.append(path)
 	if available.is_empty():
 		return
 	var chosen: String = available[randi() % available.size()]
+	RunManager.reserve_item(chosen)
 	var pickup = RUN_ITEM_PICKUP.instantiate()
 	pickup.item = load(chosen)
 	var spawn_pos := global_position + Vector2(-30, 0)
