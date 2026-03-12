@@ -248,7 +248,7 @@ func _trigger_static_discharge() -> void:
 			continue
 		if global_position.distance_to(enemy.global_position) <= stats.discharge_radius:
 			if enemy.has_method("take_damage"):
-				var damage := stats.discharge_damage
+				var damage: float = stats.discharge_damage
 				# Bonus damage to slowed enemies
 				var is_slowed := false
 				if enemy.get("is_slowed"):
