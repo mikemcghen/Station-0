@@ -127,8 +127,9 @@ func _spawn_projectile(dir: Vector2, zero_damage: bool = false) -> void:
 
 	if zero_damage:
 		proj.damage = 0.0
+		proj.color = Color(0.5, 0.5, 0.5)  # grey for overclock dud
 	elif stats.memory_spike and _memory_spike_available:
-		proj.damage = stats.damage * 3.0
+		proj.damage = stats.damage + 5.0  # flat +5 bonus
 		_memory_spike_available = false
 	else:
 		proj.damage = stats.damage

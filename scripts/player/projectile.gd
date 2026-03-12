@@ -12,6 +12,9 @@ var explosive:        bool    = false
 var explosion_radius: float   = 64.0
 var explosion_damage: float   = 2.5
 
+# Visual override (grey for overclock zero-damage shots)
+var color:            Color   = Color(1.0, 0.85, 0.2)  # default yellow
+
 var _distance_traveled: float = 0.0
 var _bounces_left:      int   = 1
 var _bounce_cooldown:   float = 0.0   # grace period after bounce to avoid re-trigger
@@ -49,10 +52,10 @@ func _check_wall_bounce(delta: float) -> void:
 		_bounce_cooldown = 0.1
 
 # ---------------------------------------------------------------------------
-# Placeholder visual — yellow circle
+# Placeholder visual — colored circle (grey for zero-damage overclock shots)
 # ---------------------------------------------------------------------------
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.85, 0.2))
+	draw_circle(Vector2.ZERO, 5.0, color)
 
 # ---------------------------------------------------------------------------
 # Collision — differentiate walls from enemies
