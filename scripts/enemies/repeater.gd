@@ -27,33 +27,6 @@ func _ready() -> void:
 	speed          = 0.0
 	contact_damage = 0.5
 	super._ready()
-	_fire_angle = randf() * TAU
-	_snap_to_wall()
-
-# ---------------------------------------------------------------------------
-# Snap to the nearest wall face at spawn
-# ---------------------------------------------------------------------------
-func _snap_to_wall() -> void:
-	var room_center: Vector2 = (get_parent() as Node2D).global_position
-	var lp:          Vector2 = global_position - room_center
-
-	var d_left:  float = lp.x - (-INNER_HALF_X)
-	var d_right: float = INNER_HALF_X - lp.x
-	var d_up:    float = lp.y - (-INNER_HALF_Y)
-	var d_down:  float = INNER_HALF_Y - lp.y
-	var md:      float = minf(minf(d_left, d_right), minf(d_up, d_down))
-
-	var wall_pos: Vector2
-	if md == d_left:
-		wall_pos = room_center + Vector2(-INNER_HALF_X, lp.y)
-	elif md == d_right:
-		wall_pos = room_center + Vector2( INNER_HALF_X, lp.y)
-	elif md == d_up:
-		wall_pos = room_center + Vector2(lp.x, -INNER_HALF_Y)
-	else:
-		wall_pos = room_center + Vector2(lp.x,  INNER_HALF_Y)
-
-	global_position = wall_pos
 
 func _physics_process(delta: float) -> void:
 	_tick_spawn_delay(delta)
@@ -69,7 +42,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 # ---------------------------------------------------------------------------
-# Stationary burst loop — fire 3, pause, rotate 20° CW, repeat
+# Stationary burst loop — fire 3 at player position, pause, repeat
 # ---------------------------------------------------------------------------
 func _do_fire(delta: float) -> void:
 	_shot_timer -= delta
@@ -81,15 +54,18 @@ func _do_fire(delta: float) -> void:
 		_shot_count += 1
 		_shot_timer = SHOT_INTERVAL
 	else:
-		_fire_angle += ROTATE_STEP
 		_shot_count = 0
 		_shot_timer = BURST_PAUSE
 
 func _fire_projectile() -> void:
+	if _player == null:
+		return
 	AudioManager.play("enemy_shoot")
+	# Fire at player's current position (not homing - player can dodge)
+	var dir := (_player.global_position - global_position).normalized()
 	var proj = ENEMY_PROJECTILE.instantiate()
 	proj.position  = (get_parent() as Node2D).to_local(global_position)
-	proj.direction = Vector2.from_angle(_fire_angle)
+	proj.direction = dir
 	proj.speed     = 280.0
 	proj.damage    = 1.0
 	proj.max_range = 520.0
