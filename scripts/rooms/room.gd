@@ -397,18 +397,63 @@ func _spawn_body_part_drop() -> void:
 	contents.add_child(pickup)
 
 func _spawn_run_item() -> void:
-	# Exclude Patch Kit from item rooms (shop-only item)
+	# Exclude Patch Kit from item rooms (shop-only item) and already collected items
 	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
 	var item_pool: Array[String] = []
 	for p in ALL_ITEM_PATHS:
-		if p != PATCH_KIT_PATH:
+		if p == PATCH_KIT_PATH:
+			continue
+		var already_collected := false
+		for collected in RunManager.run_items:
+			if collected.resource_path == p:
+				already_collected = true
+				break
+		if not already_collected:
 			item_pool.append(p)
+
+	if item_pool.is_empty():
+		_spawn_out_of_stock_marker(Vector2.ZERO)
+		return
 
 	var chosen: String = item_pool[randi() % item_pool.size()]
 	var pickup         = RUN_ITEM_PICKUP.instantiate()
 	pickup.item        = load(chosen)
 	pickup.position    = Vector2.ZERO
 	contents.add_child(pickup)
+
+func _spawn_out_of_stock_marker(pos: Vector2) -> void:
+	var marker := Node2D.new()
+	marker.position = pos
+
+	# Grey pedestal
+	var pedestal := Polygon2D.new()
+	pedestal.polygon = PackedVector2Array([
+		Vector2(-14, -14), Vector2(14, -14),
+		Vector2(14, 14), Vector2(-14, 14)
+	])
+	pedestal.color = Color(0.3, 0.3, 0.3)
+	marker.add_child(pedestal)
+
+	# X mark
+	var x_line := Line2D.new()
+	x_line.points = PackedVector2Array([Vector2(-10, -10), Vector2(10, 10)])
+	x_line.default_color = Color(0.5, 0.5, 0.5)
+	x_line.width = 2.0
+	marker.add_child(x_line)
+	var x_line2 := Line2D.new()
+	x_line2.points = PackedVector2Array([Vector2(10, -10), Vector2(-10, 10)])
+	x_line2.default_color = Color(0.5, 0.5, 0.5)
+	x_line2.width = 2.0
+	marker.add_child(x_line2)
+
+	# Label
+	var lbl := Label.new()
+	lbl.text = "OUT OF STOCK"
+	lbl.position = Vector2(-48, -40)
+	lbl.modulate = Color(0.6, 0.6, 0.6)
+	marker.add_child(lbl)
+
+	contents.add_child(marker)
 
 # ---------------------------------------------------------------------------
 # Environmental hazards — spawned in combat rooms
@@ -555,11 +600,18 @@ func _make_exposed_wiring() -> void:
 # Shop spawning — 2 random items + 1 Patch Kit, spaced horizontally
 # ---------------------------------------------------------------------------
 func _spawn_shop() -> void:
-	# Item slot paths (exclude Patch Kit from the random pool)
+	# Item slot paths (exclude Patch Kit and already collected items from the random pool)
 	const PATCH_KIT_PATH := "res://data/run_items/patch_kit.tres"
 	var item_pool: Array[String] = []
 	for p in ALL_ITEM_PATHS:
-		if p != PATCH_KIT_PATH:
+		if p == PATCH_KIT_PATH:
+			continue
+		var already_collected := false
+		for collected in RunManager.run_items:
+			if collected.resource_path == p:
+				already_collected = true
+				break
+		if not already_collected:
 			item_pool.append(p)
 	item_pool.shuffle()
 
@@ -570,20 +622,39 @@ func _spawn_shop() -> void:
 		Vector2( 200, 0),
 	]
 
-	var chosen: Array[String] = [
-		item_pool[0],
-		item_pool[1],
-		PATCH_KIT_PATH,
-	]
+	# Check if Patch Kit was already collected
+	var patch_kit_collected := false
+	for collected in RunManager.run_items:
+		if collected.resource_path == PATCH_KIT_PATH:
+			patch_kit_collected = true
+			break
+
 	var prices: Array[int] = [20, 20, 10]
 
 	for i in 3:
-		var pedestal       := Area2D.new()
-		pedestal.set_script(SHOP_PEDESTAL_SCR)
-		pedestal.position   = positions[i]
-		pedestal.set("item",  load(chosen[i]))
-		pedestal.set("price", prices[i])
-		contents.add_child(pedestal)
+		var pos: Vector2 = positions[i]
+		if i == 2:
+			# Patch Kit slot
+			if patch_kit_collected:
+				_spawn_out_of_stock_marker(pos)
+			else:
+				var pedestal := Area2D.new()
+				pedestal.set_script(SHOP_PEDESTAL_SCR)
+				pedestal.position = pos
+				pedestal.set("item", load(PATCH_KIT_PATH))
+				pedestal.set("price", prices[i])
+				contents.add_child(pedestal)
+		else:
+			# Random item slots
+			if i < item_pool.size():
+				var pedestal := Area2D.new()
+				pedestal.set_script(SHOP_PEDESTAL_SCR)
+				pedestal.position = pos
+				pedestal.set("item", load(item_pool[i]))
+				pedestal.set("price", prices[i])
+				contents.add_child(pedestal)
+			else:
+				_spawn_out_of_stock_marker(pos)
 
 # ---------------------------------------------------------------------------
 # Door locking

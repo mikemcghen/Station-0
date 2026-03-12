@@ -466,11 +466,24 @@ func _die() -> void:
 	queue_free()
 
 func _spawn_item_drop() -> void:
-	var chosen: String = ALL_ITEM_PATHS[randi() % ALL_ITEM_PATHS.size()]
+	# Filter out already collected items
+	var available: Array[String] = []
+	for path in ALL_ITEM_PATHS:
+		var already_collected := false
+		for collected in RunManager.run_items:
+			if collected.resource_path == path:
+				already_collected = true
+				break
+		if not already_collected:
+			available.append(path)
+	if available.is_empty():
+		return
+	var chosen: String = available[randi() % available.size()]
 	var pickup = RUN_ITEM_PICKUP.instantiate()
 	pickup.item = load(chosen)
-	pickup.global_position = global_position + Vector2(-30, 0)
-	get_parent().add_child(pickup)
+	var spawn_pos := global_position + Vector2(-30, 0)
+	get_parent().call_deferred("add_child", pickup)
+	pickup.set_deferred("global_position", spawn_pos)
 
 func _spawn_body_part_drop() -> void:
 	var unacquired: Array[String] = []
@@ -482,5 +495,6 @@ func _spawn_body_part_drop() -> void:
 	var chosen: String = unacquired[randi() % unacquired.size()]
 	var pickup = BODY_PART_PICKUP.instantiate()
 	pickup.part = load(chosen)
-	pickup.global_position = global_position + Vector2(30, 0)
-	get_parent().add_child(pickup)
+	var spawn_pos := global_position + Vector2(30, 0)
+	get_parent().call_deferred("add_child", pickup)
+	pickup.set_deferred("global_position", spawn_pos)
