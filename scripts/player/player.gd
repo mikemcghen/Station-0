@@ -224,6 +224,7 @@ func take_damage(amount: float) -> void:
 		_die()
 
 func _die() -> void:
+	AudioManager.play("player_death")
 	if RunManager.run_active:
 		# Disable player so they can't move during death screen
 		set_physics_process(false)

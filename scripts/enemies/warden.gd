@@ -111,6 +111,7 @@ func _enter_phase_two() -> void:
 	_sweep_cd_timer = SWEEP_CD_P2 * 0.6   # first P2 sweep sooner
 
 func _enter_climax() -> void:
+	AudioManager.play("boss_death")
 	_phase        = Phase.CLIMAX
 	velocity      = Vector2.ZERO
 	_freeze_timer = FREEZE_DURATION
@@ -165,6 +166,7 @@ func _tick_sweep(delta: float) -> void:
 
 
 func _fire_sweep_pass() -> void:
+	AudioManager.play("warden_sweep")
 	_passes_fired    += 1
 	_pass_delay_timer = PASS_DELAY
 
@@ -287,6 +289,7 @@ func _tick_mines(delta: float) -> void:
 
 
 func _spawn_mine(world_pos: Vector2) -> void:
+	AudioManager.play("mine_arm")
 	var mine := Node2D.new()
 
 	# AOE ring visual — shows blast radius when armed (hidden initially)
@@ -316,6 +319,7 @@ func _spawn_mine(world_pos: Vector2) -> void:
 
 
 func _explode_mine(entry: Dictionary) -> void:
+	AudioManager.play("mine_explode")
 	var node: Node2D = entry["node"]
 	if not is_instance_valid(node):
 		return

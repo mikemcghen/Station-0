@@ -142,6 +142,7 @@ func _enter_transit() -> void:
 	_transit_timer = TRANSIT_TIME
 
 func _reappear() -> void:
+	AudioManager.play("relay_teleport")
 	# Pick random position within room bounds
 	var min_x := _room_center.x - ROOM_HW + WALL_T + WALL_MARGIN
 	var max_x := _room_center.x + ROOM_HW - WALL_T - WALL_MARGIN
@@ -193,6 +194,7 @@ func _roll_drifter_threshold() -> void:
 # Burst Transmission
 # ---------------------------------------------------------------------------
 func _fire_burst() -> void:
+	AudioManager.play("relay_burst")
 	var count := BURST_COUNT_P2 if _phase == Phase.TWO else BURST_COUNT_P1
 	var angle_step := TAU / float(count)
 
@@ -394,6 +396,7 @@ func _flash_damage() -> void:
 # Climax / Death
 # ---------------------------------------------------------------------------
 func _enter_climax() -> void:
+	AudioManager.play("boss_death")
 	_phase = Phase.CLIMAX
 	_climax_timer = FREEZE_DURATION
 	_blink_accum = 0.0

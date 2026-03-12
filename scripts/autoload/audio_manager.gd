@@ -22,6 +22,16 @@ var _sounds: Dictionary = {
 	"door_close": preload("res://assets/audio/sfx/door_close.wav"),
 	"room_clear": preload("res://assets/audio/sfx/room_clear.wav"),
 	"teleport": preload("res://assets/audio/sfx/teleport.wav"),
+	"warden_sweep": preload("res://assets/audio/sfx/warden_sweep.wav"),
+	"mine_arm": preload("res://assets/audio/sfx/mine_arm.wav"),
+	"mine_explode": preload("res://assets/audio/sfx/mine_explode.wav"),
+	"relay_burst": preload("res://assets/audio/sfx/relay_burst.wav"),
+	"relay_teleport": preload("res://assets/audio/sfx/relay_teleport.wav"),
+	"hivemind_pulse": preload("res://assets/audio/sfx/hivemind_pulse.wav"),
+	"hivemind_beam": preload("res://assets/audio/sfx/hivemind_beam.wav"),
+	"hivemind_knockback": preload("res://assets/audio/sfx/hivemind_knockback.wav"),
+	"player_death": preload("res://assets/audio/sfx/player_death.wav"),
+	"boss_death": preload("res://assets/audio/sfx/boss_death.wav"),
 }
 
 var _pool: Array[AudioStreamPlayer] = []

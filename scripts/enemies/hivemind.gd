@@ -232,6 +232,7 @@ func _tick_assembly(_delta: float) -> void:
 
 
 func _spawn_wave() -> void:
+	AudioManager.play("hivemind_pulse")
 	var scenes := [DRIFTER_SCENE, REPEATER_SCENE, ANCHOR_SCENE]
 	var hw := ROOM_HW - WALL_T - 80.0
 	var hh := ROOM_HH - WALL_T - 80.0
@@ -642,6 +643,7 @@ func _do_unique_attack() -> void:
 
 
 func _start_beam() -> void:
+	AudioManager.play("hivemind_beam")
 	# Start with telegraph phase
 	_beam_telegraphing = true
 	_telegraph_timer = BEAM_TELEGRAPH
@@ -745,6 +747,7 @@ func _on_beam_hit(body: Node) -> void:
 
 
 func _attack_pulse() -> void:
+	AudioManager.play("hivemind_knockback")
 	if _player == null or not is_instance_valid(_player):
 		return
 
@@ -903,6 +906,7 @@ func _tick_flash(delta: float) -> void:
 # Climax / Death
 # ---------------------------------------------------------------------------
 func _enter_climax() -> void:
+	AudioManager.play("boss_death")
 	_phase = Phase.CLIMAX
 	_climax_timer = FREEZE_DURATION
 	velocity = Vector2.ZERO
